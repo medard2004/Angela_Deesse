@@ -8,6 +8,8 @@ import 'db/id_generator.dart';
 import 'models.dart';
 import 'repositories/client_repository.dart';
 import 'repositories/measurement_repository.dart';
+import 'repositories/modele_repository.dart';
+import 'repositories/realisation_repository.dart';
 import 'utils/sort_utils.dart';
 
 IdGenerator defaultIdGenerator = const UuidV7IdGenerator();
@@ -16,39 +18,57 @@ String newId() => defaultIdGenerator.generate();
 DateTime _day(int off, [int h = 0, int m = 0]) => today().add(Duration(days: off, hours: h, minutes: m));
 
 /// Store de l'application.
-/// Pour les clients et mesures : façade branchée sur les repositories Drift.
-/// Les autres entités (commandes, modèles, finances, etc.) restent en mémoire pour les tranches suivantes.
+/// Pour les clients, mesures, modèles et réalisations : façade branchée sur les repositories Drift.
+/// Les autres entités (commandes, finances, etc.) restent en mémoire pour les tranches suivantes.
 class AppStore extends ChangeNotifier {
   AppStore({
     AppDatabase? db,
     ClientRepository? clientRepository,
     MeasurementRepository? measurementRepository,
+    ModeleRepository? modeleRepository,
+    RealisationRepository? realisationRepository,
   }) : this._(
           db ?? AppDatabase(),
           clientRepository,
           measurementRepository,
+          modeleRepository,
+          realisationRepository,
         );
 
   AppStore._(
     this._db,
     ClientRepository? clientRepository,
     MeasurementRepository? measurementRepository,
+    ModeleRepository? modeleRepository,
+    RealisationRepository? realisationRepository,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
-        _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db) {
+        _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db),
+        _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db),
+        _realisationRepo = realisationRepository ?? DriftRealisationRepository(db: _db) {
     _seedInMemory();
   }
 
   final AppDatabase _db;
   final ClientRepository _clientRepo;
   final MeasurementRepository _measurementRepo;
+  final ModeleRepository _modeleRepo;
+  final RealisationRepository _realisationRepo;
+
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
+  StreamSubscription<List<Modele>>? _modeleSub;
+  StreamSubscription<List<Realisation>>? _realisationSub;
+
+  Map<String, Modele> _allModelesById = {};
+
   bool _initialized = false;
   bool get isInitialized => _initialized;
 
   AppDatabase get db => _db;
   ClientRepository get clientRepo => _clientRepo;
   MeasurementRepository get measurementRepo => _measurementRepo;
+  ModeleRepository get modeleRepo => _modeleRepo;
+  RealisationRepository get realisationRepo => _realisationRepo;
 
   String atelierName = 'Angela Couture';
   List<Client> clients = [];
@@ -77,6 +97,15 @@ class AppStore extends ChangeNotifier {
     final dbMeasurements = await _measurementRepo.getAll();
     measurements = _sortMeasurements(dbMeasurements);
 
+    final dbModeles = await _modeleRepo.getAll();
+    modeles = _sortModeles(dbModeles);
+
+    final allModeles = await _modeleRepo.getAllIncludingDeleted();
+    _allModelesById = {for (final m in allModeles) m.id: m};
+
+    final dbRealisations = await _realisationRepo.getAll();
+    realisations = _sortRealisations(dbRealisations);
+
     _clientSub?.cancel();
     _clientSub = _clientRepo.watchAll().listen((list) {
       clients = _sortClients(list);
@@ -89,6 +118,21 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
     });
 
+    _modeleSub?.cancel();
+    _modeleSub = _modeleRepo.watchAll().listen((list) {
+      modeles = _sortModeles(list);
+      for (final m in list) {
+        _allModelesById[m.id] = m;
+      }
+      notifyListeners();
+    });
+
+    _realisationSub?.cancel();
+    _realisationSub = _realisationRepo.watchAll().listen((list) {
+      realisations = _sortRealisations(list);
+      notifyListeners();
+    });
+
     _initialized = true;
     notifyListeners();
   }
@@ -97,6 +141,8 @@ class AppStore extends ChangeNotifier {
   void dispose() {
     _clientSub?.cancel();
     _measurementSub?.cancel();
+    _modeleSub?.cancel();
+    _realisationSub?.cancel();
     super.dispose();
   }
 
@@ -112,20 +158,20 @@ class AppStore extends ChangeNotifier {
     return copy;
   }
 
+  List<Modele> _sortModeles(List<Modele> list) {
+    final copy = List<Modele>.from(list);
+    copy.sort((a, b) => compareCaseAndAccentInsensitive(a.name, b.name));
+    return copy;
+  }
+
+  List<Realisation> _sortRealisations(List<Realisation> list) {
+    final copy = List<Realisation>.from(list);
+    copy.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return copy;
+  }
+
   // ---------- Données de démonstration (entités encore en mémoire) ----------
   void _seedInMemory() {
-    const mods = [
-      ('Robe sirène', 'Coupe ajustée jusqu\'aux genoux, évasée en bas.'),
-      ('Ensemble pagne', 'Haut cintré et jupe longue assortie.'),
-      ('Chemise bazin', 'Col mao, broderies sur le plastron.'),
-      ('Costume 3 pièces', 'Veste, pantalon et gilet.'),
-      ('Boubou brodé', 'Grand boubou, broderies main.'),
-      ('Robe enfant', 'Robe évasée avec nœud dans le dos.'),
-    ];
-    for (var i = 0; i < mods.length; i++) {
-      modeles.add(Modele(id: 'mo$i', name: mods[i].$1, description: mods[i].$2, photo: 'demo:$i'));
-    }
-
     // (client, titre, tissu, prix, livraison J+, statut, déjà payé, essayage, modèle)
     final defs = <(int, String, String, int, int, OrderStatus, int, DateTime?, int?)>[
       (7, 'Robe cocktail', 'Satin émeraude', 45000, -3, OrderStatus.cours, 20000, null, null),
@@ -174,13 +220,6 @@ class AppStore extends ChangeNotifier {
       ));
     }
 
-    const cats = ['Robe', 'Robe', 'Chemise', 'Costume', 'Pagne', 'Pagne', 'Enfant', 'Robe', 'Costume'];
-    for (var i = 0; i < cats.length; i++) {
-      realisations.add(Realisation(
-        id: 'r$i', photo: 'demo:${i + 2}', category: cats[i], clientId: 'c${i % 6}',
-        caption: i.isEven ? modeles[i % modeles.length].name : '', createdAt: _day(-3 * i - 2),
-      ));
-    }
     _sort();
   }
 
@@ -191,8 +230,8 @@ class AppStore extends ChangeNotifier {
     clientPayments.sort((a, b) => b.paidAt.compareTo(a.paidAt));
     apprenticePayments.sort((a, b) => b.paidAt.compareTo(a.paidAt));
     apprentices.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    modeles.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    realisations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    modeles = _sortModeles(modeles);
+    realisations = _sortRealisations(realisations);
   }
 
   void _commit() {
@@ -209,7 +248,10 @@ class AppStore extends ChangeNotifier {
   // ---------- Lookups ----------
   Client? clientById(String? id) => clients.where((c) => c.id == id).firstOrNull;
   Order? orderById(String? id) => orders.where((o) => o.id == id).firstOrNull;
-  Modele? modeleById(String? id) => modeles.where((m) => m.id == id).firstOrNull;
+  Modele? modeleById(String? id) {
+    if (id == null) return null;
+    return _allModelesById[id] ?? modeles.where((m) => m.id == id).firstOrNull;
+  }
   Apprentice? apprenticeById(String? id) => apprentices.where((a) => a.id == id).firstOrNull;
 
   List<Order> ordersOfClient(String clientId) => orders.where((o) => o.clientId == clientId).toList().reversed.toList();
@@ -260,6 +302,34 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------- Écritures Modèles & Réalisations (Drift) ----------
+  Future<void> saveModele(Modele m) async {
+    await _modeleRepo.save(m);
+    modeles = _sortModeles(await _modeleRepo.getAll());
+    _allModelesById[m.id] = m;
+    notifyListeners();
+  }
+
+  Future<void> deleteModele(String id) async {
+    await _modeleRepo.delete(id);
+    modeles = _sortModeles(await _modeleRepo.getAll());
+    // On conserve le modèle dans _allModelesById pour que les commandes existantes
+    // puissent toujours résoudre son nom et sa photo via modeleById(id).
+    notifyListeners();
+  }
+
+  Future<void> saveRealisation(Realisation r) async {
+    await _realisationRepo.save(r);
+    realisations = _sortRealisations(await _realisationRepo.getAll());
+    notifyListeners();
+  }
+
+  Future<void> deleteRealisation(String id) async {
+    await _realisationRepo.delete(id);
+    realisations = _sortRealisations(await _realisationRepo.getAll());
+    notifyListeners();
+  }
+
   // ---------- Écritures autres entités (en mémoire pour l'instant) ----------
   Future<void> saveOrder(Order o) async => _put(orders, o, o.id, (x) => x.id);
   Future<void> deleteOrder(String id) async {
@@ -273,12 +343,6 @@ class AppStore extends ChangeNotifier {
 
   Future<void> deleteClientPayment(String id) async {
     clientPayments.removeWhere((p) => p.id == id);
-    _commit();
-  }
-
-  Future<void> saveModele(Modele m) async => _put(modeles, m, m.id, (x) => x.id);
-  Future<void> deleteModele(String id) async {
-    modeles.removeWhere((m) => m.id == id);
     _commit();
   }
 
@@ -300,12 +364,6 @@ class AppStore extends ChangeNotifier {
 
   Future<void> deleteApprenticePayment(String id) async {
     apprenticePayments.removeWhere((p) => p.id == id);
-    _commit();
-  }
-
-  Future<void> saveRealisation(Realisation r) async => _put(realisations, r, r.id, (x) => x.id);
-  Future<void> deleteRealisation(String id) async {
-    realisations.removeWhere((r) => r.id == id);
     _commit();
   }
 }

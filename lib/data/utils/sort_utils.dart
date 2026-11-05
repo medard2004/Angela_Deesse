@@ -15,3 +15,7 @@ int compareCaseAndAccentInsensitive(String a, String b) {
   if (cmp != 0) return cmp;
   return a.compareTo(b);
 }
+
+bool equalsCaseAndAccentInsensitive(String a, String b) {
+  return removeDiacritics(a.trim().toLowerCase()) == removeDiacritics(b.trim().toLowerCase());
+}

@@ -365,7 +365,7 @@ void main() {
       expect(measureCount, 3);
 
       // Check sync_state
-      final syncStateRow = await (db.select(db.syncState)..where((t) => t.key.equals('demo_seeded'))).getSingleOrNull();
+      final syncStateRow = await (db.select(db.syncState)..where((t) => t.key.equals('demo_seeded:clients'))).getSingleOrNull();
       expect(syncStateRow, isNotNull);
       expect(syncStateRow!.value, '1');
 

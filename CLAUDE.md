@@ -145,7 +145,16 @@ Côté serveur (Laravel) :
 - **Écritures atomiques** : toutes les écritures passent par `AppDatabase.writeWithOutbox` ou transaction multi-tables générant les entrées outbox.
 - **Suppression logique** : `deleted_at = now`, pas de DELETE physique sur les tables synchronisables.
 - **Règle suppression client** : refusée si le client a des commandes actives. Si aucune commande, le client et ses fiches de mesures sont supprimés logiquement dans la même transaction avec entrées outbox distinctes.
-- **Seeding** : `DemoSeeder` n'écrit AUCUNE entrée dans `sync_outbox`. Conditionné à `kDebugMode`, table clients vide et absence de clé `'demo_seeded'`.
+- **Seeding** : `DemoSeeder` n'écrit AUCUNE entrée dans `sync_outbox`. Conditionné à `kDebugMode`, table clients vide et absence de clé `'demo_seeded:clients'`.
 - **Façade AppStore** : `AppStore.init()` charge la base, écoute les streams Drift et met à jour les caches de clients et mesures.
 - **Tris** : insensibles à la casse et aux accents (`compareCaseAndAccentInsensitive`).
 - **Écran de démarrage** : `SplashScreen` initialise `AppStore.init()` pendant la vidéo/animation et gère un écran d'erreur minimaliste en cas d'échec d'ouverture SQLite.
+
+### Tranche 2 (Modèles & Réalisations) — Terminée
+- **Repositories** : `ModeleRepository` / `DriftModeleRepository`, `RealisationRepository` / `DriftRealisationRepository`.
+- **Écritures atomiques** : modifications et suppressions logiques via `AppDatabase.writeWithOutbox` générant une entrée dans `sync_outbox` (`modeles`, `realisations`).
+- **Règle de suppression d'un modèle** : suppression logique autorisée même si référencé par des commandes. Les commandes conservent leur `modele_id`. `AppStore.modeleById(id)` résout les modèles y compris supprimés (cache complet) afin que l'UI commande affiche toujours son nom. Le catalogue (`AppStore.modeles`) exclut rigoureusement les modèles supprimés.
+- **Règle de suppression d'un client lié à des réalisations** : autorisée. La réalisation conserve son `client_id` en base ; l'UI affiche une valeur de repli (« Client supprimé ») sans plantage.
+- **Photos** : convention `demo:N` préservée dans `photo_path`, `photo_hash = null`, `photo_upload_state = 'none'`.
+- **DemoSeeder par entité & migration** : remplacement de la clé unique `'demo_seeded'` par trois clés distinctes (`'demo_seeded:clients'`, `'demo_seeded:modeles'`, `'demo_seeded:realisations'`). Si l'ancienne clé `'demo_seeded'` = '1' est détectée, elle est automatiquement convertie en `'demo_seeded:clients'` sans réinsérer les clients existants. Zéro écriture dans `sync_outbox`.
+- **Tri et filtrage** : tri des modèles et filtre des réalisations insensibles à la casse et aux accents (`compareCaseAndAccentInsensitive`, `equalsCaseAndAccentInsensitive`).

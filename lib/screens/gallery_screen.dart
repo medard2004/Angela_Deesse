@@ -1,3 +1,4 @@
+import '../data/utils/sort_utils.dart';
 import '../ui.dart';
 
 class GalleryScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
     final s = context.watch<AppStore>();
     final cats = {...kCategories, ...s.realisations.map((r) => r.category).where((c) => c.isNotEmpty)}.toList();
     final list = s.realisations
-        .where((r) => (_category == null || r.category == _category) && (_clientId == null || r.clientId == _clientId))
+        .where((r) => (_category == null || equalsCaseAndAccentInsensitive(r.category, _category!)) && (_clientId == null || r.clientId == _clientId))
         .toList();
 
     Widget filtersRow = SizedBox(
@@ -221,12 +222,12 @@ class RealisationDetailScreen extends StatelessWidget {
             index: 0,
             child: Text(r.caption, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           ),
-        if (client != null)
+        if (r.clientId != null)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: StaggeredFadeIn(
               index: 1,
-              child: Text(client.name, style: const TextStyle(color: Pal.slate)),
+              child: Text(client?.name ?? 'Client supprimé', style: const TextStyle(color: Pal.slate)),
             ),
           ),
         Padding(
