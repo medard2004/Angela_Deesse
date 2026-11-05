@@ -12,6 +12,12 @@ abstract class ApprenticeRepository {
   Future<List<Apprentice>> getAll();
   Future<Apprentice?> getById(String id);
   Future<void> save(Apprentice apprentice);
+  Future<ApprenticePayment> createWithDeposit({
+    required Apprentice apprentice,
+    required int depositAmount,
+    String depositNote = 'Acompte inscription',
+    DateTime? paidAt,
+  });
   Future<void> delete(String id);
   Future<bool> hasActivePaymentsForApprentice(String apprenticeId);
 }
@@ -132,6 +138,99 @@ class DriftApprenticeRepository implements ApprenticeRepository {
             );
       },
     );
+  }
+
+  @override
+  Future<ApprenticePayment> createWithDeposit({
+    required Apprentice apprentice,
+    required int depositAmount,
+    String depositNote = 'Acompte inscription',
+    DateTime? paidAt,
+  }) async {
+    if (depositAmount <= 0) {
+      throw ArgumentError('Le montant du versement doit être strictement positif.');
+    }
+    if (depositAmount > apprentice.totalFee) {
+      throw ArgumentError(
+        'Le montant du versement ($depositAmount FCFA) dépasse les frais de formation (${apprentice.totalFee} FCFA).',
+      );
+    }
+
+    final now = clock.now();
+    final paymentDate = paidAt ?? now;
+    final paymentId = idGenerator.generate();
+    final normStartDate = normalizeDate(apprentice.startDate);
+    final normNextDue = apprentice.nextDue != null ? normalizeDate(apprentice.nextDue!) : null;
+
+    return db.transaction(() async {
+      // 1. Insertion de l'apprenti
+      await db.into(db.apprentices).insert(
+            db_layer.ApprenticesCompanion.insert(
+              id: apprentice.id,
+              name: apprentice.name,
+              phone: Value(apprentice.phone),
+              startDate: normStartDate,
+              totalFee: apprentice.totalFee,
+              nextDue: Value(normNextDue),
+              notes: Value(apprentice.notes),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await db.into(db.syncOutbox).insert(
+            db_layer.SyncOutboxCompanion.insert(
+              id: idGenerator.generate(),
+              entity: 'apprentices',
+              entityId: apprentice.id,
+              op: 'upsert',
+              createdAt: now,
+            ),
+          );
+
+      // 2. Numéro de reçu séquentiel
+      final receiptNo = await db.nextReceiptNumber(counterName: 'apprentices');
+
+      // 3. Insertion du versement
+      final balanceAfter = apprentice.totalFee - depositAmount;
+      await db.into(db.apprenticePayments).insert(
+            db_layer.ApprenticePaymentsCompanion.insert(
+              id: paymentId,
+              apprenticeId: apprentice.id,
+              amount: depositAmount,
+              paidAt: paymentDate,
+              note: Value(depositNote),
+              receiptNumber: receiptNo,
+              totalFeeAtPayment: apprentice.totalFee,
+              balanceAfter: balanceAfter,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await db.into(db.syncOutbox).insert(
+            db_layer.SyncOutboxCompanion.insert(
+              id: idGenerator.generate(),
+              entity: 'apprentice_payments',
+              entityId: paymentId,
+              op: 'upsert',
+              createdAt: now,
+            ),
+          );
+
+      return ApprenticePayment(
+        id: paymentId,
+        apprenticeId: apprentice.id,
+        amount: depositAmount,
+        paidAt: paymentDate,
+        note: depositNote,
+        receiptNumber: receiptNo,
+        totalFeeAtPayment: apprentice.totalFee,
+        balanceAfter: balanceAfter,
+        createdAt: now,
+        updatedAt: now,
+      );
+    });
   }
 
   @override

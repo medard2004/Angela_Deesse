@@ -118,6 +118,77 @@ void main() {
       expect(outbox.length, 3);
     });
 
+    test('1b. Création avec acompte : atomicité complète et rollback si échec', () async {
+      final aId = idGen.generate();
+      final apprentice = Apprentice(
+        id: aId,
+        name: 'Sékou Touré',
+        phone: '98765432',
+        startDate: DateTime.utc(2026, 2, 1),
+        totalFee: 120000,
+        createdAt: clock.now(),
+      );
+
+      // 1. Succès : apprenti + acompte créés dans la même transaction
+      final payment = await apprenticeRepo.createWithDeposit(
+        apprentice: apprentice,
+        depositAmount: 40000,
+        depositNote: 'Acompte initial',
+      );
+
+      expect(payment.receiptNumber, 1);
+      expect(payment.totalFeeAtPayment, 120000);
+      expect(payment.balanceAfter, 80000);
+      expect(payment.note, 'Acompte initial');
+
+      // Vérifier en base
+      final fetchedApp = await apprenticeRepo.getById(aId);
+      expect(fetchedApp, isNotNull);
+      final payments = await paymentRepo.getByApprenticeId(aId);
+      expect(payments.length, 1);
+
+      // Vérifier le compteur de reçus
+      final counter = await (db.select(db.receiptCounters)..where((t) => t.counterName.equals('apprentices'))).getSingle();
+      expect(counter.lastValue, 1);
+
+      // Outbox : 1 apprentice + 1 apprentice_payment = 2 entrées
+      final outbox = await db.select(db.syncOutbox).get();
+      expect(outbox.length, 2);
+      expect(outbox.map((e) => e.entity).toSet(), containsAll(['apprentices', 'apprentice_payments']));
+
+      // 2. Échec : acompte invalide (supérieur aux frais)
+      final failId = idGen.generate();
+      final failApprentice = Apprentice(
+        id: failId,
+        name: 'Apprenti Invalide',
+        phone: '00000000',
+        startDate: clock.now(),
+        totalFee: 50000,
+        createdAt: clock.now(),
+      );
+
+      expect(
+        () => apprenticeRepo.createWithDeposit(
+          apprentice: failApprentice,
+          depositAmount: 60000, // Supérieur à 50 000
+          depositNote: 'Trop élevé',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      // Vérifier que l'apprenti n'existe pas en base
+      final failFetched = await (db.select(db.apprentices)..where((t) => t.id.equals(failId))).getSingleOrNull();
+      expect(failFetched, isNull);
+
+      // Le compteur de reçus n'a pas bougé (toujours à 1)
+      final counterAfterFail = await (db.select(db.receiptCounters)..where((t) => t.counterName.equals('apprentices'))).getSingle();
+      expect(counterAfterFail.lastValue, 1);
+
+      // Aucune entrée d'outbox supplémentaire
+      final outboxAfterFail = await db.select(db.syncOutbox).get();
+      expect(outboxAfterFail.length, 2);
+    });
+
     test('2. Atomicité & Rollback si l écriture échoue', () async {
       // Vérifier que writeWithOutbox annule la transaction si une erreur survient
       final outboxBefore = await db.select(db.syncOutbox).get();

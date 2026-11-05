@@ -56,20 +56,16 @@ class _ApprenticeFormScreenState extends State<ApprenticeFormScreen> {
       notes: _notes.text.trim(),
     );
 
+    final deposit = (isNew && initialPay > 0) ? initialPay : null;
     try {
-      await store.saveApprentice(apprentice);
-    } catch (e) {
+      final p = await store.saveApprentice(
+        apprentice,
+        initialDeposit: deposit,
+        depositNote: 'Acompte inscription',
+      );
       if (mounted) {
-        toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('ArgumentError: ', '').replaceAll('StateError: ', ''));
-      }
-      return;
-    }
-
-    if (isNew && initialPay > 0) {
-      try {
-        final p = await store.addApprenticePayment(apprentice.id, initialPay, 'Acompte inscription');
-        if (mounted) {
-          Navigator.pop(context);
+        Navigator.pop(context);
+        if (p != null) {
           openReceiptScreen(
             context,
             ReceiptData(
@@ -81,7 +77,7 @@ class _ApprenticeFormScreenState extends State<ApprenticeFormScreen> {
               beneficiaryPhone: apprentice.phone,
               date: p.paidAt,
               amountPaid: p.amount,
-              note: 'Acompte inscription formation',
+              note: p.note.isEmpty ? 'Acompte inscription formation' : p.note,
               totalFee: p.totalFeeAtPayment,
               totalPaidToDate: p.totalFeeAtPayment - p.balanceAfter,
               remainingAmount: p.balanceAfter,
@@ -91,14 +87,11 @@ class _ApprenticeFormScreenState extends State<ApprenticeFormScreen> {
             ),
           );
         }
-      } catch (e) {
-        if (mounted) {
-          toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('ArgumentError: ', '').replaceAll('StateError: ', ''));
-          Navigator.pop(context);
-        }
       }
-    } else {
-      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('ArgumentError: ', '').replaceAll('StateError: ', ''));
+      }
     }
   }
 

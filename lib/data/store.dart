@@ -416,10 +416,26 @@ class AppStore extends ChangeNotifier {
   }
 
   // ---------- Écritures Apprentis (Drift) ----------
-  Future<void> saveApprentice(Apprentice a) async {
-    await _apprenticeRepo.save(a);
+  Future<ApprenticePayment?> saveApprentice(
+    Apprentice a, {
+    int? initialDeposit,
+    String? depositNote,
+  }) async {
+    final ApprenticePayment? payment;
+    if (initialDeposit != null && initialDeposit > 0) {
+      payment = await _apprenticeRepo.createWithDeposit(
+        apprentice: a,
+        depositAmount: initialDeposit,
+        depositNote: depositNote ?? 'Acompte inscription',
+      );
+    } else {
+      await _apprenticeRepo.save(a);
+      payment = null;
+    }
     apprentices = _sortApprentices(await _apprenticeRepo.getAll());
+    apprenticePayments = _sortApprenticePayments(await _apprenticePaymentRepo.getAll());
     notifyListeners();
+    return payment;
   }
 
   Future<void> deleteApprentice(String id) async {
