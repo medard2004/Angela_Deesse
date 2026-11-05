@@ -56,33 +56,46 @@ class _ApprenticeFormScreenState extends State<ApprenticeFormScreen> {
       notes: _notes.text.trim(),
     );
 
-    await store.saveApprentice(apprentice);
+    try {
+      await store.saveApprentice(apprentice);
+    } catch (e) {
+      if (mounted) {
+        toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('ArgumentError: ', '').replaceAll('StateError: ', ''));
+      }
+      return;
+    }
 
     if (isNew && initialPay > 0) {
-      final p = await store.addApprenticePayment(apprentice.id, initialPay, 'Acompte inscription');
-      if (mounted) {
-        Navigator.pop(context);
-        final remaining = (apprentice.totalFee - initialPay).clamp(0, 1 << 40).toInt();
-        openReceiptScreen(
-          context,
-          ReceiptData(
-            receiptNo: p.receiptNo.toString().padLeft(4, '0'),
-            atelierName: store.atelierName,
-            title: 'Reçu de versement apprenti',
-            beneficiaryName: apprentice.name,
-            beneficiaryRole: 'Apprenti(e)',
-            beneficiaryPhone: apprentice.phone,
-            date: p.paidAt,
-            amountPaid: p.amount,
-            note: 'Acompte inscription formation',
-            totalFee: apprentice.totalFee,
-            totalPaidToDate: p.amount,
-            remainingAmount: remaining,
-            nextDueDate: apprentice.nextDue,
-            stampText: remaining <= 0 ? 'SOLDÉ' : 'VERSÉ',
-            itemDetail: 'Formation couture',
-          ),
-        );
+      try {
+        final p = await store.addApprenticePayment(apprentice.id, initialPay, 'Acompte inscription');
+        if (mounted) {
+          Navigator.pop(context);
+          openReceiptScreen(
+            context,
+            ReceiptData(
+              receiptNo: p.receiptNo.toString().padLeft(4, '0'),
+              atelierName: store.atelierName,
+              title: 'Reçu de versement apprenti',
+              beneficiaryName: apprentice.name,
+              beneficiaryRole: 'Apprenti(e)',
+              beneficiaryPhone: apprentice.phone,
+              date: p.paidAt,
+              amountPaid: p.amount,
+              note: 'Acompte inscription formation',
+              totalFee: p.totalFeeAtPayment,
+              totalPaidToDate: p.totalFeeAtPayment - p.balanceAfter,
+              remainingAmount: p.balanceAfter,
+              nextDueDate: apprentice.nextDue,
+              stampText: p.balanceAfter <= 0 ? 'SOLDÉ' : 'VERSÉ',
+              itemDetail: 'Formation couture',
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('ArgumentError: ', '').replaceAll('StateError: ', ''));
+          Navigator.pop(context);
+        }
       }
     } else {
       if (mounted) Navigator.pop(context);

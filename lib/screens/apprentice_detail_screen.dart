@@ -8,12 +8,15 @@ class ApprenticeDetailScreen extends StatelessWidget {
 
   void _openReceipt(BuildContext context, Apprentice a, ApprenticePayment p) {
     final s = context.read<AppStore>();
-    final toDate = s.paymentsOfApprentice(a.id).where((x) => x.receiptNo <= p.receiptNo).fold(0, (t, x) => t + x.amount);
-    final rest = (a.totalFee - toDate).clamp(0, 1 << 40).toInt();
+    final receiptFormatted = p.receiptNumber.toString().padLeft(4, '0');
+    final stamp = p.isVoided
+        ? 'ANNULÉ'
+        : (p.balanceAfter <= 0 ? 'SOLDÉ' : 'VERSÉ');
+
     openReceiptScreen(
       context,
       ReceiptData(
-        receiptNo: p.receiptNo.toString().padLeft(4, '0'),
+        receiptNo: receiptFormatted,
         atelierName: s.atelierName,
         title: 'Reçu de versement',
         beneficiaryName: a.name,
@@ -22,14 +25,66 @@ class ApprenticeDetailScreen extends StatelessWidget {
         date: p.paidAt,
         amountPaid: p.amount,
         note: p.note.isEmpty ? 'Versement de formation' : p.note,
-        totalFee: a.totalFee,
-        totalPaidToDate: toDate,
-        remainingAmount: rest,
+        totalFee: p.totalFeeAtPayment,
+        totalPaidToDate: p.totalFeeAtPayment - p.balanceAfter,
+        remainingAmount: p.balanceAfter,
         nextDueDate: a.nextDue,
-        stampText: rest <= 0 ? 'SOLDÉ' : 'VERSÉ',
+        stampText: stamp,
         itemDetail: 'Formation couture',
       ),
     );
+  }
+
+  Future<void> _promptVoidPayment(BuildContext context, AppStore s, ApprenticePayment payment) async {
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Annuler le versement'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Montant : ${fcfa(payment.amount)}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Motif d\'annulation',
+                hintText: 'Ex: Erreur de saisie',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Retour'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Pal.thread),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Annuler le versement'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final reason = reasonController.text.trim();
+      try {
+        await s.voidApprenticePayment(payment.id, reason.isEmpty ? 'Annulé' : reason);
+        if (context.mounted) {
+          toast(context, 'Versement annulé');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('StateError: ', ''));
+        }
+      }
+    }
   }
 
   @override
@@ -50,9 +105,19 @@ class ApprenticeDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
-              if (await confirm(context, 'Supprimer ${a.name} ?', 'Son historique de paiements sera supprimé.')) {
-                await s.deleteApprentice(a.id);
-                if (context.mounted) Navigator.pop(context);
+              if (s.activePaymentsOfApprentice(a.id).isNotEmpty) {
+                toast(context, 'Impossible de supprimer un apprenti ayant des versements actifs');
+                return;
+              }
+              if (await confirm(context, 'Supprimer ${a.name} ?', 'Cette action supprimera l\'apprenti.')) {
+                try {
+                  await s.deleteApprentice(a.id);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('StateError: ', ''));
+                  }
+                }
               }
             },
           ),
@@ -119,8 +184,14 @@ class ApprenticeDetailScreen extends StatelessWidget {
                       title: 'Versement de ${a.name}',
                       max: rest,
                       onSave: (amount, note) async {
-                        final p = await s.addApprenticePayment(a.id, amount, note);
-                        if (context.mounted) _openReceipt(context, a, p);
+                        try {
+                          final p = await s.addApprenticePayment(a.id, amount, note);
+                          if (context.mounted) _openReceipt(context, a, p);
+                        } catch (e) {
+                          if (context.mounted) {
+                            toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('ArgumentError: ', '').replaceAll('StateError: ', ''));
+                          }
+                        }
                       },
                     ),
                   ),
@@ -148,41 +219,63 @@ class ApprenticeDetailScreen extends StatelessWidget {
           StaggeredFadeIn(
             index: 4 + i,
             isCard: true,
-            child: Panel(
-              onTap: () => _openReceipt(context, a, payments[i]),
-              padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
-              child: Row(children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(color: const Color(0xFFEFF3FD), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.receipt_long_rounded, color: Pal.cobalt, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(fcfa(payments[i].amount), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    Text(
-                      'Reçu n°${payments[i].receiptNo.toString().padLeft(4, '0')}  ·  ${fmtDate(payments[i].paidAt)}${payments[i].note.isEmpty ? '' : '  ·  ${payments[i].note}'}',
-                      style: const TextStyle(color: Pal.slate, fontSize: 12),
+            child: Opacity(
+              opacity: payments[i].isVoided ? 0.55 : 1.0,
+              child: Panel(
+                onTap: () => _openReceipt(context, a, payments[i]),
+                padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+                child: Row(children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(color: const Color(0xFFEFF3FD), borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.receipt_long_rounded, color: Pal.cobalt, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(
+                        children: [
+                          Text(fcfa(payments[i].amount), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                          if (payments[i].isVoided) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Pal.thread.withAlpha(25),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Annulé${payments[i].voidReason != null && payments[i].voidReason!.isNotEmpty ? ' (${payments[i].voidReason})' : ''}',
+                                style: const TextStyle(
+                                  color: Pal.thread,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        'Reçu n°${payments[i].receiptNo.toString().padLeft(4, '0')}  ·  ${fmtDate(payments[i].paidAt)}${payments[i].note.isEmpty ? '' : '  ·  ${payments[i].note}'}',
+                        style: const TextStyle(color: Pal.slate, fontSize: 12),
+                      ),
+                    ]),
+                  ),
+                  IconButton(
+                    tooltip: 'Voir le reçu',
+                    icon: const Icon(Icons.open_in_new_rounded, size: 19, color: Pal.cobalt),
+                    onPressed: () => _openReceipt(context, a, payments[i]),
+                  ),
+                  if (!payments[i].isVoided)
+                    IconButton(
+                      tooltip: 'Annuler',
+                      icon: const Icon(Icons.block, size: 19, color: Pal.thread),
+                      onPressed: () => _promptVoidPayment(context, s, payments[i]),
                     ),
-                  ]),
-                ),
-                IconButton(
-                  tooltip: 'Voir le reçu',
-                  icon: const Icon(Icons.open_in_new_rounded, size: 19, color: Pal.cobalt),
-                  onPressed: () => _openReceipt(context, a, payments[i]),
-                ),
-                IconButton(
-                  tooltip: 'Supprimer',
-                  icon: const Icon(Icons.close, size: 19, color: Pal.slate),
-                  onPressed: () async {
-                    if (await confirm(context, 'Supprimer ce versement ?', fcfa(payments[i].amount))) {
-                      await s.deleteApprenticePayment(payments[i].id);
-                    }
-                  },
-                ),
-              ]),
+                ]),
+              ),
             ),
           ),
       ]),

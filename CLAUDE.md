@@ -191,3 +191,29 @@ Côté serveur (Laravel) :
   - Commandes + photos + versements démo insérés ensemble sous la clé `'demo_seeded:orders'` en debug uniquement, sans écriture dans `sync_outbox`.
   - Numéros de reçus séquentiels attribués aux versements démo et compteur `receipt_counters('clients')` calé dessus.
   - `reconcileReceiptCounters()` exécuté à l'initialisation de l'atelier pour garantir la cohérence continue des compteurs.
+
+### Tranche 4 (Apprentis, Versements d'écolage & Reçus) — Terminée
+- **Repositories** : `ApprenticeRepository` / `DriftApprenticeRepository`, `ApprenticePaymentRepository` / `DriftApprenticePaymentRepository`.
+- **Écritures atomiques & Outbox** :
+  - Sauvegarde et suppression logique (`deleted_at`) d'apprentis via `AppDatabase.writeWithOutbox` (entité `'apprentices'`).
+  - Ajout de versement d'écolage (`addPayment`) en UNE transaction SQLite atomique : `apprentice_payments` + calcul immuable de `total_fee_at_payment` et `balance_after` + incrémentation du compteur `receipt_counters('apprentices')` + entrée d'outbox `'apprentice_payments'`. Rollback intégral en cas d'erreur sans trou dans la numérotation des reçus.
+- **Règles métier & Contrôles** :
+  - Suppression d'un apprenti refusée s'il possède au moins un versement NON annulé (`StateError`). Si tous ses versements sont annulés, suppression logique de l'apprenti autorisée (les versements sont conservés dans la base).
+  - Modification de formation refusée si `totalFee < total_versements_actifs` (`ArgumentError`).
+  - Refus d'un versement dont le montant dépasse le reliquat restant (`ArgumentError`).
+- **Versements & Annulation** :
+  - Reliquat calculé dynamiquement : `total_fee - somme(versements actifs)` via les accesseurs centralisés dans `AppStore` (`activePaymentsOfApprentice(id)`, `apprenticePaid(id)`, `apprenticeRemaining(id)`, `totalApprenticeRemaining`).
+  - Annulation (`voidApprenticePayment`) : pose `voided_at`, `void_reason`, `updated_at`, outbox `upsert`. Double annulation rejetée. Jamais de suppression physique (`DELETE`).
+  - Versement annulé affiché en atténué (opacité 0.55) avec badge « Annulé (motif) » dans la liste des versements. L'icône de corbeille est remplacée par l'icône de blocage « Annuler » ouvrant une boîte de dialogue avec saisie obligatoire d'un motif.
+- **Numéros de reçus & Affichage (Reçu = photographie immuable)** :
+  - Compteur dédié distinct dans `receipt_counters` sous la clé `'apprentices'`.
+  - Format d'affichage : numéro séquentiel sur 4 chiffres `0001` (sans préfixe).
+  - Reçu en photographie immuable : `ReceiptScreen` affiche directement `totalFeeAtPayment` et `balanceAfter` stockés lors du versement. Les tampons sont « VERSÉ » (reliquat > 0), « SOLDÉ » (reliquat == 0) et « ANNULÉ » en rouge si le versement est annulé. Annuler un versement plus ancien ou modifier le coût de formation ne modifie pas les reçus antérieurs déjà émis.
+  - Libellé dynamique dans `ReceiptScreen` : « Total formation » pour les apprentis, « Prix total » pour les clients.
+- **Dates jour-seul vs fuseaux horaires** :
+  - `start_date` et `next_due` normalisés en « jour calendaire (UTC minuit) » via `normalizeDate`, garantissant la neutralité de fuseau horaire (`Africa/Lagos` UTC+1, `America/New_York` UTC-5).
+  - Échéancier et retards calculés en Dart avec bornes en heure locale.
+- **DemoSeeder** :
+  - 3 apprentis ('a0', 'a1', 'a2') et 5 versements ('ap0'..'ap4') insérés ensemble sous la clé `'demo_seeded:apprentices'` en debug uniquement, sans écriture dans `sync_outbox`.
+  - Compteur `receipt_counters('apprentices')` calé sur 5.
+  - `reconcileReceiptCounters()` appelé à l'initialisation de l'atelier.

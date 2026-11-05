@@ -574,7 +574,7 @@ class _ReceiptPaperContent extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 5),
-                  _line('Total formation', fcfa(data.totalFee)),
+                  _line(data.beneficiaryRole == 'Client(e)' ? 'Prix total' : 'Total formation', fcfa(data.totalFee)),
                   _line('Cumul versé à ce jour', fcfa(data.totalPaidToDate)),
                   _line(
                     'Reste à payer',

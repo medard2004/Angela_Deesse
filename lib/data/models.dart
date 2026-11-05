@@ -168,37 +168,132 @@ class ClientPayment {
 
 class Apprentice {
   Apprentice({
-    required this.id, required this.name, this.phone = '', required this.startDate,
-    required this.totalFee, this.nextDue, this.notes = '',
-  });
+    required this.id,
+    required this.name,
+    this.phone = '',
+    required this.startDate,
+    required this.totalFee,
+    this.nextDue,
+    this.notes = '',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? startDate,
+        updatedAt = updatedAt ?? startDate;
+
   final String id, name, phone, notes;
   final DateTime startDate;
   final DateTime? nextDue;
   final int totalFee;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  Apprentice copyWith({
+    String? name,
+    String? phone,
+    DateTime? startDate,
+    int? totalFee,
+    DateTime? nextDue,
+    String? notes,
+  }) =>
+      Apprentice(
+        id: id,
+        name: name ?? this.name,
+        phone: phone ?? this.phone,
+        startDate: startDate ?? this.startDate,
+        totalFee: totalFee ?? this.totalFee,
+        nextDue: nextDue ?? this.nextDue,
+        notes: notes ?? this.notes,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
+
   Map<String, Object?> toMap() => {
-        'id': id, 'name': name, 'phone': phone, 'start_date': startDate.millisecondsSinceEpoch,
-        'total_fee': totalFee, 'next_due': nextDue?.millisecondsSinceEpoch, 'notes': notes,
+        'id': id,
+        'name': name,
+        'phone': phone,
+        'start_date': startDate.millisecondsSinceEpoch,
+        'total_fee': totalFee,
+        'next_due': nextDue?.millisecondsSinceEpoch,
+        'notes': notes,
+        'created_at': createdAt.millisecondsSinceEpoch,
+        'updated_at': updatedAt.millisecondsSinceEpoch,
       };
+
   factory Apprentice.fromMap(Map<String, Object?> m) => Apprentice(
-      id: m['id'] as String, name: _s(m['name']), phone: _s(m['phone']), startDate: _d(m['start_date']),
-      totalFee: _i(m['total_fee']), nextDue: _dn(m['next_due']), notes: _s(m['notes']));
+        id: m['id'] as String,
+        name: _s(m['name']),
+        phone: _s(m['phone']),
+        startDate: _d(m['start_date']),
+        totalFee: _i(m['total_fee']),
+        nextDue: _dn(m['next_due']),
+        notes: _s(m['notes']),
+        createdAt: m['created_at'] != null ? _d(m['created_at']) : null,
+        updatedAt: m['updated_at'] != null ? _d(m['updated_at']) : null,
+      );
 }
 
 class ApprenticePayment {
   ApprenticePayment({
-    required this.id, required this.apprenticeId, required this.amount, required this.paidAt,
-    this.note = '', required this.receiptNo,
-  });
+    required this.id,
+    required this.apprenticeId,
+    required this.amount,
+    required this.paidAt,
+    this.note = '',
+    int? receiptNumber,
+    int? receiptNo,
+    required this.totalFeeAtPayment,
+    required this.balanceAfter,
+    this.voidedAt,
+    this.voidReason,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : receiptNumber = receiptNumber ?? receiptNo ?? 0,
+        createdAt = createdAt ?? paidAt,
+        updatedAt = updatedAt ?? paidAt;
+
   final String id, apprenticeId, note;
-  final int amount, receiptNo;
+  final int amount;
   final DateTime paidAt;
+  final int receiptNumber;
+  int get receiptNo => receiptNumber;
+  final int totalFeeAtPayment;
+  final int balanceAfter;
+  final DateTime? voidedAt;
+  final String? voidReason;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  bool get isVoided => voidedAt != null;
+
   Map<String, Object?> toMap() => {
-        'id': id, 'apprentice_id': apprenticeId, 'amount': amount,
-        'paid_at': paidAt.millisecondsSinceEpoch, 'note': note, 'receipt_no': receiptNo,
+        'id': id,
+        'apprentice_id': apprenticeId,
+        'amount': amount,
+        'paid_at': paidAt.millisecondsSinceEpoch,
+        'note': note,
+        'receipt_number': receiptNumber,
+        'total_fee_at_payment': totalFeeAtPayment,
+        'balance_after': balanceAfter,
+        'voided_at': voidedAt?.millisecondsSinceEpoch,
+        'void_reason': voidReason,
+        'created_at': createdAt.millisecondsSinceEpoch,
+        'updated_at': updatedAt.millisecondsSinceEpoch,
       };
+
   factory ApprenticePayment.fromMap(Map<String, Object?> m) => ApprenticePayment(
-      id: m['id'] as String, apprenticeId: m['apprentice_id'] as String, amount: _i(m['amount']),
-      paidAt: _d(m['paid_at']), note: _s(m['note']), receiptNo: _i(m['receipt_no']));
+        id: m['id'] as String,
+        apprenticeId: m['apprentice_id'] as String,
+        amount: _i(m['amount']),
+        paidAt: _d(m['paid_at']),
+        note: _s(m['note']),
+        receiptNumber: m['receipt_number'] != null ? _i(m['receipt_number']) : _i(m['receipt_no']),
+        totalFeeAtPayment: _i(m['total_fee_at_payment']),
+        balanceAfter: _i(m['balance_after']),
+        voidedAt: _dn(m['voided_at']),
+        voidReason: m['void_reason'] as String?,
+        createdAt: m['created_at'] != null ? _d(m['created_at']) : null,
+        updatedAt: m['updated_at'] != null ? _d(m['updated_at']) : null,
+      );
 }
 
 class Realisation {

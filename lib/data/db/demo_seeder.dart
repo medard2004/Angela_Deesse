@@ -350,6 +350,88 @@ class DemoSeeder {
       didSeed = true;
     }
 
+    // =========================================================================
+    // 6. APPRENTIS ET VERSEMENTS D'ÉCOLAGE
+    // =========================================================================
+    final seededApprentices = await (db.select(db.syncState)
+          ..where((t) => t.key.equals('demo_seeded:apprentices')))
+        .getSingleOrNull();
+
+    if (seededApprentices == null) {
+      await db.transaction(() async {
+        final apprenticesCount = await db.apprentices.count().getSingle();
+        if (apprenticesCount == 0) {
+          // 6.1 Insertion des 3 apprentis démo
+          final apprenticeDefs = [
+            ('a0', 'Kafui Amedome', '90 22 41 18', day(-120), 150000, day(4)),
+            ('a1', 'Mawuli Sodji', '91 08 77 30', day(-200), 120000, day(-2)),
+            ('a2', 'Essi Gbadoe', '93 61 09 52', day(-300), 150000, null),
+          ];
+
+          for (final def in apprenticeDefs) {
+            await db.into(db.apprentices).insert(
+                  ApprenticesCompanion.insert(
+                    id: def.$1,
+                    name: def.$2,
+                    phone: Value(def.$3),
+                    startDate: def.$4,
+                    totalFee: def.$5,
+                    nextDue: Value(def.$6),
+                    notes: const Value(''),
+                    createdAt: def.$4,
+                    updatedAt: def.$4,
+                  ),
+                );
+          }
+
+          // 6.2 Insertion des 5 versements d'écolage
+          final paymentDefs = [
+            ('ap0', 'a0', 50000, day(-60), 1, 150000, 100000, ''),
+            ('ap1', 'a0', 30000, day(-5), 2, 150000, 70000, 'Mensualité'),
+            ('ap2', 'a1', 60000, day(-40), 3, 120000, 60000, ''),
+            ('ap3', 'a2', 100000, day(-200), 4, 150000, 50000, ''),
+            ('ap4', 'a2', 50000, day(-40), 5, 150000, 0, ''),
+          ];
+
+          for (final p in paymentDefs) {
+            await db.into(db.apprenticePayments).insert(
+                  ApprenticePaymentsCompanion.insert(
+                    id: p.$1,
+                    apprenticeId: p.$2,
+                    amount: p.$3,
+                    paidAt: p.$4,
+                    receiptNumber: p.$5,
+                    totalFeeAtPayment: p.$6,
+                    balanceAfter: p.$7,
+                    note: Value(p.$8),
+                    createdAt: p.$4,
+                    updatedAt: p.$4,
+                  ),
+                );
+          }
+
+          // 6.3 Mise à jour du compteur de reçus apprentis
+          await db.into(db.receiptCounters).insertOnConflictUpdate(
+                ReceiptCountersCompanion.insert(
+                  counterName: 'apprentices',
+                  lastValue: const Value(5),
+                  updatedAt: now,
+                ),
+              );
+        }
+
+        // 6.4 Marquer la démo apprentices comme seedée
+        await db.into(db.syncState).insertOnConflictUpdate(
+              SyncStateCompanion.insert(
+                key: 'demo_seeded:apprentices',
+                value: '1',
+                updatedAt: now,
+              ),
+            );
+      });
+      didSeed = true;
+    }
+
     return didSeed;
   }
 }

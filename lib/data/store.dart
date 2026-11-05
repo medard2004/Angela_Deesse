@@ -6,6 +6,8 @@ import 'db/app_database.dart' show AppDatabase;
 import 'db/demo_seeder.dart';
 import 'db/id_generator.dart';
 import 'models.dart';
+import 'repositories/apprentice_payment_repository.dart';
+import 'repositories/apprentice_repository.dart';
 import 'repositories/client_repository.dart';
 import 'repositories/measurement_repository.dart';
 import 'repositories/modele_repository.dart';
@@ -17,11 +19,9 @@ import 'utils/sort_utils.dart';
 IdGenerator defaultIdGenerator = const UuidV7IdGenerator();
 String newId() => defaultIdGenerator.generate();
 
-DateTime _day(int off, [int h = 0, int m = 0]) => today().add(Duration(days: off, hours: h, minutes: m));
-
 /// Store de l'application.
-/// Pour les clients, mesures, modèles et réalisations : façade branchée sur les repositories Drift.
-/// Les autres entités (commandes, finances, etc.) restent en mémoire pour les tranches suivantes.
+/// Pour les clients, mesures, modèles, réalisations, commandes et apprentis : façade branchée sur les repositories Drift.
+/// Les finances agrégées et réglages restent en mémoire pour les tranches suivantes.
 class AppStore extends ChangeNotifier {
   AppStore({
     AppDatabase? db,
@@ -31,6 +31,8 @@ class AppStore extends ChangeNotifier {
     RealisationRepository? realisationRepository,
     OrderRepository? orderRepository,
     PaymentRepository? paymentRepository,
+    ApprenticeRepository? apprenticeRepository,
+    ApprenticePaymentRepository? apprenticePaymentRepository,
   }) : this._(
           db ?? AppDatabase(),
           clientRepository,
@@ -39,6 +41,8 @@ class AppStore extends ChangeNotifier {
           realisationRepository,
           orderRepository,
           paymentRepository,
+          apprenticeRepository,
+          apprenticePaymentRepository,
         );
 
   AppStore._(
@@ -49,14 +53,16 @@ class AppStore extends ChangeNotifier {
     RealisationRepository? realisationRepository,
     OrderRepository? orderRepository,
     PaymentRepository? paymentRepository,
+    ApprenticeRepository? apprenticeRepository,
+    ApprenticePaymentRepository? apprenticePaymentRepository,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
         _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db),
         _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db),
         _realisationRepo = realisationRepository ?? DriftRealisationRepository(db: _db),
         _orderRepo = orderRepository ?? DriftOrderRepository(db: _db),
-        _paymentRepo = paymentRepository ?? DriftPaymentRepository(db: _db) {
-    _seedInMemory();
-  }
+        _paymentRepo = paymentRepository ?? DriftPaymentRepository(db: _db),
+        _apprenticeRepo = apprenticeRepository ?? DriftApprenticeRepository(db: _db),
+        _apprenticePaymentRepo = apprenticePaymentRepository ?? DriftApprenticePaymentRepository(db: _db);
 
   final AppDatabase _db;
   final ClientRepository _clientRepo;
@@ -65,6 +71,8 @@ class AppStore extends ChangeNotifier {
   final RealisationRepository _realisationRepo;
   final OrderRepository _orderRepo;
   final PaymentRepository _paymentRepo;
+  final ApprenticeRepository _apprenticeRepo;
+  final ApprenticePaymentRepository _apprenticePaymentRepo;
 
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
@@ -72,6 +80,8 @@ class AppStore extends ChangeNotifier {
   StreamSubscription<List<Realisation>>? _realisationSub;
   StreamSubscription<List<Order>>? _orderSub;
   StreamSubscription<List<ClientPayment>>? _paymentSub;
+  StreamSubscription<List<Apprentice>>? _apprenticeSub;
+  StreamSubscription<List<ApprenticePayment>>? _apprenticePaymentSub;
 
   Map<String, Modele> _allModelesById = {};
 
@@ -85,6 +95,8 @@ class AppStore extends ChangeNotifier {
   RealisationRepository get realisationRepo => _realisationRepo;
   OrderRepository get orderRepo => _orderRepo;
   PaymentRepository get paymentRepo => _paymentRepo;
+  ApprenticeRepository get apprenticeRepo => _apprenticeRepo;
+  ApprenticePaymentRepository get apprenticePaymentRepo => _apprenticePaymentRepo;
 
   String atelierName = 'Angela Couture';
   List<Client> clients = [];
@@ -128,6 +140,12 @@ class AppStore extends ChangeNotifier {
     final dbPayments = await _paymentRepo.getAll();
     clientPayments = _sortPayments(dbPayments);
 
+    final dbApprentices = await _apprenticeRepo.getAll();
+    apprentices = _sortApprentices(dbApprentices);
+
+    final dbApprenticePayments = await _apprenticePaymentRepo.getAll();
+    apprenticePayments = _sortApprenticePayments(dbApprenticePayments);
+
     _clientSub?.cancel();
     _clientSub = _clientRepo.watchAll().listen((list) {
       clients = _sortClients(list);
@@ -167,6 +185,18 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
     });
 
+    _apprenticeSub?.cancel();
+    _apprenticeSub = _apprenticeRepo.watchAll().listen((list) {
+      apprentices = _sortApprentices(list);
+      notifyListeners();
+    });
+
+    _apprenticePaymentSub?.cancel();
+    _apprenticePaymentSub = _apprenticePaymentRepo.watchAll().listen((list) {
+      apprenticePayments = _sortApprenticePayments(list);
+      notifyListeners();
+    });
+
     await _db.reconcileReceiptCounters();
 
     _initialized = true;
@@ -181,6 +211,8 @@ class AppStore extends ChangeNotifier {
     _realisationSub?.cancel();
     _orderSub?.cancel();
     _paymentSub?.cancel();
+    _apprenticeSub?.cancel();
+    _apprenticePaymentSub?.cancel();
     super.dispose();
   }
 
@@ -224,43 +256,20 @@ class AppStore extends ChangeNotifier {
     return copy;
   }
 
-  // ---------- Données de démonstration (entités encore en mémoire) ----------
-  void _seedInMemory() {
-    apprentices = [
-      Apprentice(id: 'a0', name: 'Kafui Amedome', phone: '90 22 41 18', startDate: _day(-120), totalFee: 150000, nextDue: _day(4)),
-      Apprentice(id: 'a1', name: 'Mawuli Sodji', phone: '91 08 77 30', startDate: _day(-200), totalFee: 120000, nextDue: _day(-2)),
-      Apprentice(id: 'a2', name: 'Essi Gbadoe', phone: '93 61 09 52', startDate: _day(-300), totalFee: 150000),
-    ];
-    final ap = <(String, int, int)>[('a0', 50000, -60), ('a0', 30000, -5), ('a1', 60000, -40), ('a2', 100000, -200), ('a2', 50000, -40)];
-    for (var i = 0; i < ap.length; i++) {
-      apprenticePayments.add(ApprenticePayment(
-        id: 'ap$i', apprenticeId: ap[i].$1, amount: ap[i].$2, paidAt: _day(ap[i].$3), receiptNo: i + 1, note: i == 1 ? 'Mensualité' : '',
-      ));
-    }
-
-    _sort();
+  List<Apprentice> _sortApprentices(List<Apprentice> list) {
+    final copy = List<Apprentice>.from(list);
+    copy.sort((a, b) => compareCaseAndAccentInsensitive(a.name, b.name));
+    return copy;
   }
 
-  void _sort() {
-    clients = _sortClients(clients);
-    orders.sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
-    measurements = _sortMeasurements(measurements);
-    clientPayments = _sortPayments(clientPayments);
-    apprenticePayments.sort((a, b) => b.paidAt.compareTo(a.paidAt));
-    apprentices.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    modeles = _sortModeles(modeles);
-    realisations = _sortRealisations(realisations);
-  }
-
-  void _commit() {
-    _sort();
-    notifyListeners();
-  }
-
-  void _put<T>(List<T> list, T item, String id, String Function(T) idOf) {
-    final i = list.indexWhere((x) => idOf(x) == id);
-    i >= 0 ? list[i] = item : list.add(item);
-    _commit();
+  List<ApprenticePayment> _sortApprenticePayments(List<ApprenticePayment> list) {
+    final copy = List<ApprenticePayment>.from(list);
+    copy.sort((a, b) {
+      final d = b.paidAt.compareTo(a.paidAt);
+      if (d != 0) return d;
+      return b.receiptNumber.compareTo(a.receiptNumber);
+    });
+    return copy;
   }
 
   // ---------- Lookups ----------
@@ -279,6 +288,8 @@ class AppStore extends ChangeNotifier {
       clientPayments.where((p) => p.orderId == orderId && !p.isVoided).toList();
   List<ApprenticePayment> paymentsOfApprentice(String apprenticeId) =>
       apprenticePayments.where((p) => p.apprenticeId == apprenticeId).toList();
+  List<ApprenticePayment> activePaymentsOfApprentice(String apprenticeId) =>
+      apprenticePayments.where((p) => p.apprenticeId == apprenticeId && !p.isVoided).toList();
 
   // ---------- Calculs ----------
   int paidOf(Order o) => activePaymentsOf(o.id).fold(0, (s, p) => s + p.amount);
@@ -286,7 +297,7 @@ class AppStore extends ChangeNotifier {
   int clientRemaining(String clientId) => ordersOfClient(clientId).fold(0, (s, o) => s + remainingOf(o));
   int get totalClientRemaining => orders.fold(0, (s, o) => s + remainingOf(o));
 
-  int apprenticePaid(Apprentice a) => paymentsOfApprentice(a.id).fold(0, (s, p) => s + p.amount);
+  int apprenticePaid(Apprentice a) => activePaymentsOfApprentice(a.id).fold(0, (s, p) => s + p.amount);
   int apprenticeRemaining(Apprentice a) => (a.totalFee - apprenticePaid(a)).clamp(0, 1 << 40).toInt();
   int get totalApprenticeRemaining => apprentices.fold(0, (s, a) => s + apprenticeRemaining(a));
 
@@ -404,24 +415,51 @@ class AppStore extends ChangeNotifier {
     await voidClientPayment(id, reason);
   }
 
-  Future<void> saveApprentice(Apprentice a) async => _put(apprentices, a, a.id, (x) => x.id);
-  Future<void> deleteApprentice(String id) async {
-    apprenticePayments.removeWhere((p) => p.apprenticeId == id);
-    apprentices.removeWhere((a) => a.id == id);
-    _commit();
+  // ---------- Écritures Apprentis (Drift) ----------
+  Future<void> saveApprentice(Apprentice a) async {
+    await _apprenticeRepo.save(a);
+    apprentices = _sortApprentices(await _apprenticeRepo.getAll());
+    notifyListeners();
   }
 
+  Future<void> deleteApprentice(String id) async {
+    final hasActive = await _apprenticeRepo.hasActivePaymentsForApprentice(id);
+    if (hasActive) {
+      throw StateError('Impossible de supprimer un apprenti avec des versements actifs.');
+    }
+    await _apprenticeRepo.delete(id);
+    apprentices = _sortApprentices(await _apprenticeRepo.getAll());
+    notifyListeners();
+  }
+
+  // ---------- Écritures Versements Apprentis & Reçus (Drift) ----------
   Future<ApprenticePayment> addApprenticePayment(String apprenticeId, int amount, String note) async {
-    final next = apprenticePayments.fold(0, (m, p) => p.receiptNo > m ? p.receiptNo : m) + 1;
-    final p = ApprenticePayment(
-        id: newId(), apprenticeId: apprenticeId, amount: amount, paidAt: DateTime.now(), note: note, receiptNo: next);
-    apprenticePayments.add(p);
-    _commit();
+    final a = apprenticeById(apprenticeId);
+    if (a == null) {
+      throw StateError('Apprenti introuvable.');
+    }
+    final rest = apprenticeRemaining(a);
+    if (amount > rest) {
+      throw ArgumentError('Le montant du versement ($amount FCFA) dépasse le reste à payer ($rest FCFA).');
+    }
+    final p = await _apprenticePaymentRepo.addPayment(
+      apprenticeId: apprenticeId,
+      amount: amount,
+      note: note,
+    );
+    apprenticePayments = _sortApprenticePayments(await _apprenticePaymentRepo.getAll());
+    notifyListeners();
     return p;
   }
 
-  Future<void> deleteApprenticePayment(String id) async {
-    apprenticePayments.removeWhere((p) => p.id == id);
-    _commit();
+  Future<ApprenticePayment> voidApprenticePayment(String id, String reason) async {
+    final p = await _apprenticePaymentRepo.voidPayment(id: id, reason: reason);
+    apprenticePayments = _sortApprenticePayments(await _apprenticePaymentRepo.getAll());
+    notifyListeners();
+    return p;
+  }
+
+  Future<void> deleteApprenticePayment(String id, [String reason = 'Annulé']) async {
+    await voidApprenticePayment(id, reason);
   }
 }
