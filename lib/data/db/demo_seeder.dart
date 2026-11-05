@@ -197,6 +197,151 @@ class DemoSeeder {
       didSeed = true;
     }
 
+    // 5. Commandes, Photos de commande & Versements
+    final ordersSeeded = await (db.select(db.syncState)
+          ..where((t) => t.key.equals('demo_seeded:orders')))
+        .getSingleOrNull();
+
+    if (ordersSeeded == null) {
+      await db.transaction(() async {
+        final existingClients = await db.select(db.clients).get();
+        if (existingClients.isNotEmpty) {
+          final clientIds = existingClients.map((c) => c.id).toSet();
+          final existingModeles = await db.select(db.modeles).get();
+          final modeleIds = existingModeles.map((m) => m.id).toSet();
+
+          final defs = <(int, String, String, int, int, String, int, DateTime?, int?)>[
+            (7, 'Robe cocktail', 'Satin émeraude', 45000, -3, 'cours', 20000, null, null),
+            (8, 'Tailleur pantalon', 'Crêpe noir', 60000, -1, 'cours', 30000, null, null),
+            (2, 'Ensemble bazin brodé', 'Bazin riche', 75000, 0, 'prete', 50000, null, 2),
+            (3, 'Robe de mariage civil', 'Dentelle ivoire', 120000, 1, 'cours', 70000, null, 0),
+            (0, 'Robe pagne', 'Wax Vlisco', 38000, 3, 'cours', 15000, null, 1),
+            (1, 'Ensemble pagne', 'Wax doré', 55000, 5, 'attente', 25000, day(0).add(const Duration(hours: 10, minutes: 30)), 1),
+            (4, 'Chemise bazin', 'Bazin bleu', 28000, 9, 'attente', 10000, null, 2),
+            (5, 'Costume 3 pièces', 'Laine anthracite', 140000, 12, 'cours', 70000, day(6).add(const Duration(hours: 15)), 3),
+            (6, 'Boubou brodé', 'Brocart blanc', 95000, 14, 'attente', 30000, day(8).add(const Duration(hours: 9)), 4),
+            (0, 'Robe enfant', 'Coton rose', 22000, 16, 'attente', 0, null, 5),
+            (4, 'Jupe wax', 'Wax Hollandais', 18000, 20, 'attente', 18000, null, null),
+            (8, 'Robe longue', 'Satin bordeaux', 52000, 25, 'attente', 20000, null, 0),
+            (2, 'Robe wax', 'Wax rouge', 30000, -10, 'livree', 30000, null, null),
+            (1, 'Chemise', 'Bazin blanc', 25000, -15, 'livree', 25000, null, 2),
+            (5, 'Costume', 'Lin beige', 110000, -20, 'livree', 110000, null, 3),
+          ];
+
+          var receiptNo = 1;
+
+          for (var i = 0; i < defs.length; i++) {
+            final d = defs[i];
+            final orderId = 'o$i';
+            final photoPath = 'demo:${i + 1}';
+            final deliveryDate = day(d.$5);
+            final fittingDate = d.$8;
+            final createdAt = day(d.$5 - 14);
+
+            final targetClientId = 'c${d.$1}';
+            final effectiveClientId = clientIds.contains(targetClientId) ? targetClientId : clientIds.first;
+            final targetModeleId = d.$9 == null ? null : 'mo${d.$9}';
+            final effectiveModeleId = (targetModeleId != null && modeleIds.contains(targetModeleId)) ? targetModeleId : null;
+
+            // 5.1 Insertion commande
+            await db.into(db.orders).insert(
+                  OrdersCompanion.insert(
+                    id: orderId,
+                    clientId: effectiveClientId,
+                    modeleId: Value(effectiveModeleId),
+                    title: d.$2,
+                    fabric: Value(d.$3),
+                    price: d.$4,
+                    deliveryDate: deliveryDate,
+                    fittingDate: Value(fittingDate),
+                    status: Value(d.$6),
+                    photoPath: Value(photoPath),
+                    photoUploadState: const Value('none'),
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                  ),
+                );
+
+            // 5.2 Insertion photo dans order_photos
+            await db.into(db.orderPhotos).insert(
+                  OrderPhotosCompanion.insert(
+                    id: 'op$i',
+                    orderId: orderId,
+                    photoPath: photoPath,
+                    position: const Value(0),
+                    photoUploadState: const Value('none'),
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                  ),
+                );
+
+            // 5.3 Insertion des versements démo
+            final paid = d.$7;
+            if (paid >= 50000) {
+              final first = (paid * .6 / 5000).round() * 5000;
+              await db.into(db.clientPayments).insert(
+                    ClientPaymentsCompanion.insert(
+                      id: 'p${i}a',
+                      orderId: orderId,
+                      amount: first,
+                      paidAt: day(-(6 + i)),
+                      receiptNumber: receiptNo++,
+                      note: const Value('Acompte'),
+                      createdAt: day(-(6 + i)),
+                      updatedAt: day(-(6 + i)),
+                    ),
+                  );
+              await db.into(db.clientPayments).insert(
+                    ClientPaymentsCompanion.insert(
+                      id: 'p${i}b',
+                      orderId: orderId,
+                      amount: paid - first,
+                      paidAt: day(-(i % 4)),
+                      receiptNumber: receiptNo++,
+                      note: const Value('Complément'),
+                      createdAt: day(-(i % 4)),
+                      updatedAt: day(-(i % 4)),
+                    ),
+                  );
+            } else if (paid > 0) {
+              await db.into(db.clientPayments).insert(
+                    ClientPaymentsCompanion.insert(
+                      id: 'p${i}a',
+                      orderId: orderId,
+                      amount: paid,
+                      paidAt: day(-(i % 9)),
+                      receiptNumber: receiptNo++,
+                      note: const Value('Acompte'),
+                      createdAt: day(-(i % 9)),
+                      updatedAt: day(-(i % 9)),
+                    ),
+                  );
+            }
+          }
+
+          // 5.4 Mise à jour du compteur de reçus clients
+          final maxClientReceipt = receiptNo - 1;
+          await db.into(db.receiptCounters).insertOnConflictUpdate(
+                ReceiptCountersCompanion.insert(
+                  counterName: 'clients',
+                  lastValue: Value(maxClientReceipt),
+                  updatedAt: now,
+                ),
+              );
+        }
+
+        // 5.5 Marquer la démo orders comme seedée
+        await db.into(db.syncState).insertOnConflictUpdate(
+              SyncStateCompanion.insert(
+                key: 'demo_seeded:orders',
+                value: '1',
+                updatedAt: now,
+              ),
+            );
+      });
+      didSeed = true;
+    }
+
     return didSeed;
   }
 }

@@ -9,6 +9,7 @@ import 'models.dart';
 import 'repositories/client_repository.dart';
 import 'repositories/measurement_repository.dart';
 import 'repositories/modele_repository.dart';
+import 'repositories/order_repository.dart';
 import 'repositories/realisation_repository.dart';
 import 'utils/sort_utils.dart';
 
@@ -27,12 +28,14 @@ class AppStore extends ChangeNotifier {
     MeasurementRepository? measurementRepository,
     ModeleRepository? modeleRepository,
     RealisationRepository? realisationRepository,
+    OrderRepository? orderRepository,
   }) : this._(
           db ?? AppDatabase(),
           clientRepository,
           measurementRepository,
           modeleRepository,
           realisationRepository,
+          orderRepository,
         );
 
   AppStore._(
@@ -41,10 +44,12 @@ class AppStore extends ChangeNotifier {
     MeasurementRepository? measurementRepository,
     ModeleRepository? modeleRepository,
     RealisationRepository? realisationRepository,
+    OrderRepository? orderRepository,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
         _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db),
         _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db),
-        _realisationRepo = realisationRepository ?? DriftRealisationRepository(db: _db) {
+        _realisationRepo = realisationRepository ?? DriftRealisationRepository(db: _db),
+        _orderRepo = orderRepository ?? DriftOrderRepository(db: _db) {
     _seedInMemory();
   }
 
@@ -53,11 +58,13 @@ class AppStore extends ChangeNotifier {
   final MeasurementRepository _measurementRepo;
   final ModeleRepository _modeleRepo;
   final RealisationRepository _realisationRepo;
+  final OrderRepository _orderRepo;
 
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
   StreamSubscription<List<Modele>>? _modeleSub;
   StreamSubscription<List<Realisation>>? _realisationSub;
+  StreamSubscription<List<Order>>? _orderSub;
 
   Map<String, Modele> _allModelesById = {};
 
@@ -69,6 +76,7 @@ class AppStore extends ChangeNotifier {
   MeasurementRepository get measurementRepo => _measurementRepo;
   ModeleRepository get modeleRepo => _modeleRepo;
   RealisationRepository get realisationRepo => _realisationRepo;
+  OrderRepository get orderRepo => _orderRepo;
 
   String atelierName = 'Angela Couture';
   List<Client> clients = [];
@@ -106,6 +114,9 @@ class AppStore extends ChangeNotifier {
     final dbRealisations = await _realisationRepo.getAll();
     realisations = _sortRealisations(dbRealisations);
 
+    final dbOrders = await _orderRepo.getAll();
+    orders = _sortOrders(dbOrders);
+
     _clientSub?.cancel();
     _clientSub = _clientRepo.watchAll().listen((list) {
       clients = _sortClients(list);
@@ -133,6 +144,14 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
     });
 
+    _orderSub?.cancel();
+    _orderSub = _orderRepo.watchAll().listen((list) {
+      orders = _sortOrders(list);
+      notifyListeners();
+    });
+
+    await _db.reconcileReceiptCounters();
+
     _initialized = true;
     notifyListeners();
   }
@@ -143,6 +162,7 @@ class AppStore extends ChangeNotifier {
     _measurementSub?.cancel();
     _modeleSub?.cancel();
     _realisationSub?.cancel();
+    _orderSub?.cancel();
     super.dispose();
   }
 
@@ -170,6 +190,12 @@ class AppStore extends ChangeNotifier {
     return copy;
   }
 
+  List<Order> _sortOrders(List<Order> list) {
+    final copy = List<Order>.from(list);
+    copy.sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
+    return copy;
+  }
+
   // ---------- Données de démonstration (entités encore en mémoire) ----------
   void _seedInMemory() {
     // (client, titre, tissu, prix, livraison J+, statut, déjà payé, essayage, modèle)
@@ -193,11 +219,6 @@ class AppStore extends ChangeNotifier {
     for (var i = 0; i < defs.length; i++) {
       final d = defs[i];
       final id = 'o$i';
-      orders.add(Order(
-        id: id, clientId: 'c${d.$1}', modeleId: d.$9 == null ? null : 'mo${d.$9}', title: d.$2, fabric: d.$3,
-        price: d.$4, deliveryDate: _day(d.$5), fittingDate: d.$8, status: d.$6,
-        photos: ['demo:${i + 1}'], createdAt: _day(d.$5 - 14),
-      ));
       final paid = d.$7;
       if (paid >= 50000) {
         final first = (paid * .6 / 5000).round() * 5000;
@@ -281,7 +302,8 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> deleteClient(String id) async {
-    if (ordersOfClient(id).isNotEmpty) {
+    final hasOrders = await _orderRepo.hasNonDeletedOrdersForClient(id);
+    if (hasOrders) {
       throw StateError('Impossible de supprimer un client ayant des commandes actives.');
     }
     await _clientRepo.delete(id);
@@ -330,12 +352,17 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------- Écritures autres entités (en mémoire pour l'instant) ----------
-  Future<void> saveOrder(Order o) async => _put(orders, o, o.id, (x) => x.id);
+  // ---------- Écritures Commandes (Drift) ----------
+  Future<void> saveOrder(Order o) async {
+    await _orderRepo.save(o);
+    orders = _sortOrders(await _orderRepo.getAll());
+    notifyListeners();
+  }
+
   Future<void> deleteOrder(String id) async {
-    clientPayments.removeWhere((p) => p.orderId == id);
-    orders.removeWhere((o) => o.id == id);
-    _commit();
+    await _orderRepo.delete(id);
+    orders = _sortOrders(await _orderRepo.getAll());
+    notifyListeners();
   }
 
   Future<void> addClientPayment(String orderId, int amount, String note) async => _put(
