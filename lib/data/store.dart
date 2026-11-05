@@ -11,6 +11,7 @@ import 'repositories/apprentice_repository.dart';
 import 'repositories/client_repository.dart';
 import 'repositories/measurement_repository.dart';
 import 'repositories/modele_repository.dart';
+import 'repositories/finance_repository.dart';
 import 'repositories/order_repository.dart';
 import 'repositories/payment_repository.dart';
 import 'repositories/realisation_repository.dart';
@@ -35,6 +36,7 @@ class AppStore extends ChangeNotifier {
     ApprenticeRepository? apprenticeRepository,
     ApprenticePaymentRepository? apprenticePaymentRepository,
     SettingsRepository? settingsRepository,
+    FinanceRepository? financeRepository,
   }) : this._(
           db ?? AppDatabase(),
           clientRepository,
@@ -46,6 +48,7 @@ class AppStore extends ChangeNotifier {
           apprenticeRepository,
           apprenticePaymentRepository,
           settingsRepository,
+          financeRepository,
         );
 
   AppStore._(
@@ -59,6 +62,7 @@ class AppStore extends ChangeNotifier {
     ApprenticeRepository? apprenticeRepository,
     ApprenticePaymentRepository? apprenticePaymentRepository,
     SettingsRepository? settingsRepository,
+    FinanceRepository? financeRepository,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
         _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db),
         _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db),
@@ -67,7 +71,8 @@ class AppStore extends ChangeNotifier {
         _paymentRepo = paymentRepository ?? DriftPaymentRepository(db: _db),
         _apprenticeRepo = apprenticeRepository ?? DriftApprenticeRepository(db: _db),
         _apprenticePaymentRepo = apprenticePaymentRepository ?? DriftApprenticePaymentRepository(db: _db),
-        _settingsRepo = settingsRepository ?? DriftSettingsRepository(db: _db);
+        _settingsRepo = settingsRepository ?? DriftSettingsRepository(db: _db),
+        _financeRepo = financeRepository ?? DriftFinanceRepository(db: _db);
 
   final AppDatabase _db;
   final ClientRepository _clientRepo;
@@ -79,6 +84,7 @@ class AppStore extends ChangeNotifier {
   final ApprenticeRepository _apprenticeRepo;
   final ApprenticePaymentRepository _apprenticePaymentRepo;
   final SettingsRepository _settingsRepo;
+  final FinanceRepository _financeRepo;
 
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
@@ -89,9 +95,11 @@ class AppStore extends ChangeNotifier {
   StreamSubscription<List<Apprentice>>? _apprenticeSub;
   StreamSubscription<List<ApprenticePayment>>? _apprenticePaymentSub;
   StreamSubscription<Map<String, String>>? _settingsSub;
+  StreamSubscription<FinanceSummary>? _financeSub;
 
   Map<String, Modele> _allModelesById = {};
   Map<String, String> _settingsMap = {};
+  FinanceSummary? _financeSummary;
 
   bool _initialized = false;
   bool get isInitialized => _initialized;
@@ -106,12 +114,18 @@ class AppStore extends ChangeNotifier {
   ApprenticeRepository get apprenticeRepo => _apprenticeRepo;
   ApprenticePaymentRepository get apprenticePaymentRepo => _apprenticePaymentRepo;
   SettingsRepository get settingsRepo => _settingsRepo;
+  FinanceRepository get financeRepo => _financeRepo;
 
   String get atelierName => _settingsMap[kSettingAtelierName] ?? kDefaultAtelierName;
   bool get notifDelivery => _settingsMap[kSettingNotifDelivery] != 'false';
   bool get notifFitting => _settingsMap[kSettingNotifFitting] != 'false';
   bool get notifPayments => _settingsMap[kSettingNotifPayments] != 'false';
   bool get notifLate => _settingsMap[kSettingNotifLate] != 'false';
+
+  int get monthTotal => _financeSummary?.monthTotal ?? 0;
+  List<MonthCashFlow> get last6Months => _financeSummary?.last6Months ?? [];
+  PunctualityStats get punctualityStats => _financeSummary?.punctuality ?? const PunctualityStats(onTimeCount: 0, totalCount: 0, rate: null);
+  double? get punctualityRate => punctualityStats.rate;
 
   List<Client> clients = [];
   List<Measurement> measurements = [];
@@ -193,6 +207,9 @@ class AppStore extends ChangeNotifier {
     final dbSettings = await _settingsRepo.getAll();
     _settingsMap = Map<String, String>.from(dbSettings);
 
+    final dbFinance = await _financeRepo.getSummary();
+    _financeSummary = dbFinance;
+
     _clientSub?.cancel();
     _clientSub = _clientRepo.watchAll().listen((list) {
       clients = _sortClients(list);
@@ -250,6 +267,12 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
     });
 
+    _financeSub?.cancel();
+    _financeSub = _financeRepo.watchSummary().listen((summary) {
+      _financeSummary = summary;
+      notifyListeners();
+    });
+
     await _db.reconcileReceiptCounters();
 
     _initialized = true;
@@ -267,6 +290,7 @@ class AppStore extends ChangeNotifier {
     _apprenticeSub?.cancel();
     _apprenticePaymentSub?.cancel();
     _settingsSub?.cancel();
+    _financeSub?.cancel();
     super.dispose();
   }
 
@@ -349,11 +373,11 @@ class AppStore extends ChangeNotifier {
   int paidOf(Order o) => activePaymentsOf(o.id).fold(0, (s, p) => s + p.amount);
   int remainingOf(Order o) => (o.price - paidOf(o)).clamp(0, 1 << 40).toInt();
   int clientRemaining(String clientId) => ordersOfClient(clientId).fold(0, (s, o) => s + remainingOf(o));
-  int get totalClientRemaining => orders.fold(0, (s, o) => s + remainingOf(o));
+  int get totalClientRemaining => _financeSummary?.totalClientRemaining ?? orders.fold(0, (s, o) => s + remainingOf(o));
 
   int apprenticePaid(Apprentice a) => activePaymentsOfApprentice(a.id).fold(0, (s, p) => s + p.amount);
   int apprenticeRemaining(Apprentice a) => (a.totalFee - apprenticePaid(a)).clamp(0, 1 << 40).toInt();
-  int get totalApprenticeRemaining => apprentices.fold(0, (s, a) => s + apprenticeRemaining(a));
+  int get totalApprenticeRemaining => _financeSummary?.totalApprenticeRemaining ?? apprentices.fold(0, (s, a) => s + apprenticeRemaining(a));
 
   List<Order> get activeOrders => orders.where((o) => o.isActive).toList();
   List<Order> get lateOrders => orders.where((o) => o.isActive && daysUntil(o.deliveryDate) < 0).toList();

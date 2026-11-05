@@ -243,6 +243,15 @@ class DemoSeeder {
             final targetModeleId = d.$9 == null ? null : 'mo${d.$9}';
             final effectiveModeleId = (targetModeleId != null && modeleIds.contains(targetModeleId)) ? targetModeleId : null;
 
+            DateTime? deliveredAt;
+            if (d.$6 == 'livree') {
+              if (i == 13) {
+                deliveredAt = day(d.$5 + 1).add(const Duration(hours: 11)); // 1 jour en retard
+              } else {
+                deliveredAt = day(d.$5).add(const Duration(hours: 14)); // À temps
+              }
+            }
+
             // 5.1 Insertion commande
             await db.into(db.orders).insert(
                   OrdersCompanion.insert(
@@ -255,7 +264,7 @@ class DemoSeeder {
                     deliveryDate: deliveryDate,
                     fittingDate: Value(fittingDate),
                     status: Value(d.$6),
-                    deliveredAt: const Value(null),
+                    deliveredAt: Value(deliveredAt),
                     photoPath: Value(photoPath),
                     photoUploadState: const Value('none'),
                     createdAt: createdAt,

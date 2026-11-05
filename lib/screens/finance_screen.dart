@@ -9,14 +9,14 @@ class FinanceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppStore>();
     final now = DateTime.now();
-    bool thisMonth(DateTime d) => d.year == now.year && d.month == now.month;
-    final int monthTotal = s.clientPayments.where((p) => !p.isVoided && thisMonth(p.paidAt)).fold<int>(0, (t, p) => t + p.amount) +
-        s.apprenticePayments.where((p) => thisMonth(p.paidAt)).fold<int>(0, (t, p) => t + p.amount);
+    final int monthTotal = s.monthTotal;
 
-    // Maquette : l'historique des mois précédents est fictif.
-    final values = <int>[182000, 241000, 198000, 276000, 231000, monthTotal];
-    final maxV = values.reduce((a, b) => a > b ? a : b).toDouble();
-    final months = [for (var i = 5; i >= 0; i--) DateFormat('MMM', 'fr_FR').format(DateTime(now.year, now.month - i))];
+    final last6 = s.last6Months;
+    final values = last6.isEmpty ? <int>[0, 0, 0, 0, 0, monthTotal] : last6.map((m) => m.total).toList();
+    final maxV = values.isEmpty ? 0.0 : values.reduce((a, b) => a > b ? a : b).toDouble();
+    final months = last6.isEmpty
+        ? [for (var i = 5; i >= 0; i--) DateFormat('MMM', 'fr_FR').format(DateTime(now.year, now.month - i))]
+        : last6.map((m) => m.label).toList();
 
     final moves = <({String who, String sub, int amount, DateTime date, bool apprentice})>[
       for (final p in s.clientPayments.where((p) => !p.isVoided))
@@ -25,7 +25,7 @@ class FinanceScreen extends StatelessWidget {
           sub: s.orderById(p.orderId)?.title ?? 'Commande',
           amount: p.amount, date: p.paidAt, apprentice: false,
         ),
-      for (final p in s.apprenticePayments)
+      for (final p in s.apprenticePayments.where((p) => !p.isVoided))
         (who: s.apprenticeById(p.apprenticeId)?.name ?? 'Apprenti', sub: 'Formation', amount: p.amount, date: p.paidAt, apprentice: true),
     ]..sort((a, b) => b.date.compareTo(a.date));
 

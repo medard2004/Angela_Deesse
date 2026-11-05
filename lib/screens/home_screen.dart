@@ -23,7 +23,7 @@ class HomeScreen extends StatelessWidget {
       final d = daysUntil(o.deliveryDate);
       return d >= 0 && d <= 7;
     }).toList();
-    final onTime = active.where((o) => daysUntil(o.deliveryDate) >= 2).length;
+    final rate = s.punctualityRate;
 
     final prios = <_Priority>[];
     for (final o in active) {
@@ -90,13 +90,18 @@ class HomeScreen extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(5),
                     child: LinearProgressIndicator(
-                      value: active.isEmpty ? 0 : onTime / active.length,
+                      value: rate ?? 0,
                       minHeight: 6, backgroundColor: Colors.white24, color: Pal.orange,
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: Text('$onTime commandes sont dans les délais', style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                Expanded(
+                  child: Text(
+                    rate == null ? '—' : '${(rate * 100).round()} % dans les délais',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ),
               ]),
             ]),
           ),
