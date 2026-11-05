@@ -22,8 +22,9 @@ IdGenerator defaultIdGenerator = const UuidV7IdGenerator();
 String newId() => defaultIdGenerator.generate();
 
 /// Store de l'application.
-/// Pour les clients, mesures, modèles, réalisations, commandes et apprentis : façade branchée sur les repositories Drift.
-/// Les finances agrégées et réglages restent en mémoire pour les tranches suivantes.
+/// Façade unifiée branchée sur les repositories Drift (clients, mesures,
+/// modèles, réalisations, commandes, versements clients, apprentis, versements
+/// apprentis, réglages et finances).
 class AppStore extends ChangeNotifier {
   AppStore({
     AppDatabase? db,
@@ -172,10 +173,12 @@ class AppStore extends ChangeNotifier {
   }
 
   /// Initialise la persistance Drift (seeding si nécessaire, chargement du cache et écoute des streams).
-  Future<void> init() async {
+  Future<void> init({bool seedDemo = true}) async {
     if (_initialized) return;
 
-    await DemoSeeder(_db).seedIfNecessary();
+    if (seedDemo) {
+      await DemoSeeder(_db).seedIfNecessary();
+    }
 
     final dbClients = await _clientRepo.getAll();
     clients = _sortClients(dbClients);

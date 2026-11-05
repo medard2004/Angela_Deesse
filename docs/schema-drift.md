@@ -12,8 +12,8 @@ Ce document décrit le schéma complet de la base de données locale sous Drift 
 2. **Horodatages, Dates & Conventions temporelles** : 
    - Toutes les colonnes temporelles sont stockées sous forme d'**entiers SQLite (`INTEGER`) en millisecondes UTC depuis l'époque Unix** via un `TypeConverter` dédié (`DateTimeConverter` et `NullableDateTimeConverter`).
    - Deux conventions sémantiques strictes régissent les dates :
-     - **« instant »** : moment précis dans le temps (UTC epoch ms), utilisé pour les horodatages techniques et événements réels (`created_at`, `updated_at`, `deleted_at`, `paid_at`, `voided_at`, `delivered_at`, `taken_at`).
-     - **« jour calendaire (UTC minuit) »** : date sans composante horaire liée au calendrier civil (`delivery_date`, `fitting_date`, `start_date`, `next_due`), systématiquement normalisée à `DateTime.utc(year, month, day, 0, 0, 0)`. Cela garantit un aller-retour exact et invariant quel que soit le fuseau horaire de l'appareil (`Africa/Lagos` UTC+1, `America/New_York` UTC-5). Les calculs d'échéances et de retards (tableau de bord) s'effectuent côté Dart avec les bornes locales de l'utilisateur.
+     - **« instant »** : moment précis dans le temps (UTC epoch ms), utilisé pour les horodatages techniques et événements réels (`created_at`, `updated_at`, `deleted_at`, `paid_at`, `voided_at`, `delivered_at`, `taken_at`, `fitting_date` préservant l'heure d'essayage).
+     - **« jour calendaire (UTC minuit) »** : date sans composante horaire liée au calendrier civil (`delivery_date`, `start_date`, `next_due`), systématiquement normalisée à `DateTime.utc(year, month, day, 0, 0, 0)`. Cela garantit un aller-retour exact et invariant quel que soit le fuseau horaire de l'appareil (`Africa/Lagos` UTC+1, `America/New_York` UTC-5). Les calculs d'échéances et de retards (tableau de bord) s'effectuent côté Dart avec les bornes locales de l'utilisateur.
    - *Comportement Drift par défaut* : Drift stocke par défaut les `DateTime` en secondes Unix tronquées (`~/ 1000`). L'utilisation systématique de nos convertisseurs garantit la préservation exacte des millisecondes requises pour les résolutions de conflits et tris de synchronisation.
 3. **Suppression logique & Règle d'or Outbox** :
    - Toutes les entités synchronisables portent `deleted_at` (nullable).
@@ -122,7 +122,7 @@ Commandes de confections passées par les clients.
 | `fabric` | `TEXT` | `String` | Non | Défaut `''` | Tissu fourni/décrit |
 | `price` | `INTEGER` | `int` | Non | `CHECK (price >= 0)` | Prix total convenu (FCFA) |
 | `delivery_date` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | jour calendaire (UTC minuit) — Date limite de livraison |
-| `fitting_date` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | jour calendaire (UTC minuit) — Date d'essayage |
+| `fitting_date` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant (UTC epoch ms) — Date et heure d'essayage |
 | `status` | `TEXT` | `String` | Non | Défaut `'attente'` | `attente`, `cours`, `prete`, `livree` |
 | `delivered_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date réelle de livraison (statut 'livree') |
 | `photo_path` | `TEXT` | `String?` | Oui | - | Photo principale |

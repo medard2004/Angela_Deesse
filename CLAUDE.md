@@ -114,7 +114,7 @@ Côté serveur (Laravel) :
 
 ## 11. Plan par phases
 
-1. **Local** : schéma Drift sync-ready, repositories, migration d'`AppStore`, `_seed()` devient un jeu de démo optionnel.
+1. **Local (TERMINÉ)** : schéma Drift sync-ready v1, 10 tables synchronisables, 3 tables techniques locales, repositories complets, atomisme outbox sur toutes les écritures, migration intégrale d'`AppStore`, DemoSeeder par entité, agrégats financiers et ponctualité réactifs.
 2. **Fonctions réelles** : `image_picker` + `path_provider` (photos), `url_launcher` (appel, WhatsApp pré-rempli), vrai PIN (haché, secure storage).
 3. **Utilitaires** : PDF réel des reçus (envoi WhatsApp), notifications locales d'essayage et de livraison (reprogrammées au démarrage depuis la base, Android les perd après un redémarrage).
 4. **Serveur et sync** : Laravel + Supabase, clé d'appareil, outbox, `push` / `pull`, photos, keep-alive, `pg_dump`.
@@ -217,3 +217,55 @@ Côté serveur (Laravel) :
   - 3 apprentis ('a0', 'a1', 'a2') et 5 versements ('ap0'..'ap4') insérés ensemble sous la clé `'demo_seeded:apprentices'` en debug uniquement, sans écriture dans `sync_outbox`.
   - Compteur `receipt_counters('apprentices')` calé sur 5.
   - `reconcileReceiptCounters()` appelé à l'initialisation de l'atelier.
+
+### Tranche 5A (Réglages persistés & Notifications) — Terminée
+- **Repository** : `SettingsRepository` / `DriftSettingsRepository` sur la table `settings` (`id = key`, `value`, `created_at`, `updated_at`).
+- **Écritures & Outbox** :
+  - `upsert` par `AppDatabase.writeWithOutbox` (entité `'settings'`, `entityId = key`, `op = 'upsert'`).
+  - Aucun `deleted_at`, aucune suppression physique.
+  - Règle de sécurité : interdiction formelle de stocker le hash du PIN, la clé d'appareil ou le curseur de synchronisation dans `settings`.
+- **Clés de réglages** :
+  - `atelier_name` : nom de l'atelier (défaut : `"Atelier Angela"`).
+  - `notif_delivery` : rappels de livraison (`'true'` / `'false'`, défaut `true`).
+  - `notif_fitting` : rappels d'essayage (`'true'` / `'false'`, défaut `true`).
+  - `notif_payments` : rappels de versements (`'true'` / `'false'`, défaut `true`).
+  - `notif_late` : alertes de retard (`'true'` / `'false'`, défaut `true`).
+- **Valeurs par défaut dans le code** : aucune ligne écrite en base tant que l'utilisateur ne modifie aucun paramètre. `DemoSeeder` n'écrit aucun réglage.
+- **Façade AppStore** : getters synchrones réactifs alimentés par un stream `watchAll()`, mises à jour asynchrones (`setAtelierName`, `setNotifDelivery`, etc.).
+
+### Tranche 5B (Finances agrégées & Ponctualité) — Terminée
+- **Repository** : `FinanceRepository` / `DriftFinanceRepository` (lectures seules, streams réactifs Drift vers `AppStore`).
+- **Recouvrement clients & apprentis** :
+  - Recouvrement clients : somme sur les commandes non supprimées de `max(0, prix - versements actifs)`. Une commande livrée non soldée est comptabilisée comme dette. Jointure `LEFT OUTER JOIN` avec condition `voided_at IS NULL` dans le `ON` (pour conserver les commandes sans versement actif).
+  - Recouvrement apprentis : somme sur les apprentis non supprimés de `max(0, total_fee - versements actifs)`.
+  - Cohérence vérifiée par tests automatisés : la somme SQL égale rigoureusement la somme des reliquats de l'accesseur central Dart (`remainingOf`, `apprenticeRemaining`) sur le jeu de démo et sur graine pseudo-aléatoire (seed 42).
+- **Encaissements du mois & Graphique 6 mois** :
+  - Calculés en heure locale de l'appareil : bornes `[début du mois local, début du mois local suivant)` converties en millisecondes UTC.
+  - Périmètre unifié : cumule versements clients actifs + versements apprentis actifs (aligné sur l'UI).
+  - Versements annulés (`voided_at IS NOT NULL`) exclus de TOUS les totaux, y compris pour les mois passés.
+  - Graphique : 6 derniers mois civils locaux glissants, mois courant inclus, du plus ancien au plus récent. Mois sans encaissement = 0. Les 5 anciennes valeurs codées en dur sont supprimées. La dernière barre égale rigoureusement le total du mois courant.
+- **Taux de ponctualité révisé** :
+  - Population : commandes non supprimées au statut `'livree'` avec `delivered_at` non nul, livrées dans les 90 derniers jours (fenêtre glissante `[now - 90 jours, now]`).
+  - Commande « à temps » : jour calendaire local de `delivered_at` <= jour calendaire promis (`delivery_date`, normalisé à minuit UTC).
+  - Taux = `(commandes à temps) / (commandes de la fenêtre)`, arrondi à l'entier pourcent.
+  - Affichage : `${(rate * 100).round()} % dans les délais`, ou « — » si aucune commande n'a été livrée dans la fenêtre de 90 jours (évite toute division par zéro).
+- **DemoSeeder** : `delivered_at` renseigné sur les 3 commandes démo livrées (`o12` et `o14` à temps, `o13` en retard de 1 jour).
+
+### Tranche 5C (Nettoyage, audit outbox et clôture couche locale) — Terminée
+- **Nettoyage** : suppression du code mort en mémoire, passage de `AppStore.init({bool seedDemo = true})` pour supporter l'initialisation sur base vierge sans seeding en test.
+- **Éléments restant mock / volatils** :
+  1. Photos : identifiants `demo:N` (en attente d'`image_picker` + `path_provider`).
+  2. Partage et contact : boutons WhatsApp / SMS / appel (SnackBar au lieu d'`url_launcher`).
+  3. Reçus : boutons PDF et impression thermique (SnackBar au lieu de `pdf` / `printing`).
+  4. Code PIN : `LockScreen` maquette acceptant tout code à 4 chiffres (en attente de `flutter_secure_storage`).
+  5. Notifications système : interrupteurs persistés mais aucune alarme locale planifiée (en attente de `flutter_local_notifications`).
+- **Audit Outbox & Invariants** :
+  - Test d'invariant automatisé (`test/db/outbox_audit_test.dart`) déroulant un scénario complet sur base vide touchant les 10 entités synchronisables.
+  - Vérifié : chaque ligne de chaque table synchronisable a au moins une entrée correspondante `(entity, entity_id)` dans `sync_outbox`.
+  - Vérifié : chaque opération `op = 'delete'` dans l'outbox correspond rigoureusement à une ligne dont `deleted_at` est non nul.
+- **Audit des écritures** :
+  - Aucune écriture SQL directe hors de `lib/data/`.
+  - Toutes les écritures de `lib/data/` passent soit par `writeWithOutbox`, soit par une transaction atomique générant systématiquement les entrées d'outbox requises.
+- **Revue du schéma Drift v1** :
+  - `docs/schema-drift.md` harmonisé pour expliciter que `fitting_date` est un instant préservant l'heure d'essayage.
+  - Schéma v1 prêt à être gelé pour la synchronisation.
