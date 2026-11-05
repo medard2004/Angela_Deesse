@@ -129,3 +129,13 @@ Côté serveur (Laravel) :
 - Une migration de schéma Drift à chaque changement de table, avec version incrémentée et test.
 - Avant de toucher à l'UI existante, demander : le design est validé.
 - En cas de doute sur une décision de ce fichier, la poser à l'utilisateur plutôt que d'improviser.
+
+## 13. Avancement de la migration Drift (branche feat/local-db)
+
+### Schéma Drift v1
+- Tables créées : `clients`, `measurements`, `modeles`, `orders`, `order_photos`, `client_payments`, `apprentices`, `apprentice_payments`, `realisations`, `settings`, `receipt_counters`, `sync_outbox`, `sync_state`.
+- Schema dump généré dans `drift_schemas/drift_schema_v1.json`.
+- `settings.id = key` (sans colonne `deleted_at`).
+- `order_photos` gère chaque photo avec son upload state et sa position.
+- Contraintes CHECK sur montants positifs et prix >= 0.
+- `reconcileReceiptCounters()` implémenté pour recalculer le max du compteur après pull serveur.
