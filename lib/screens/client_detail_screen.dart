@@ -40,7 +40,11 @@ class ClientDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
-              if (await confirm(context, 'Supprimer ${c.name} ?', 'Ses mensurations, commandes et paiements seront supprimés.')) {
+              if (s.ordersOfClient(c.id).isNotEmpty) {
+                toast(context, 'Impossible de supprimer un client ayant des commandes.');
+                return;
+              }
+              if (await confirm(context, 'Supprimer ${c.name} ?', 'Ses fiches de mesures seront également supprimées.')) {
                 await s.deleteClient(c.id);
                 if (context.mounted) Navigator.pop(context);
               }

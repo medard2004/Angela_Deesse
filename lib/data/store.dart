@@ -1,18 +1,54 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../core/format.dart';
+import 'db/app_database.dart' show AppDatabase;
+import 'db/demo_seeder.dart';
+import 'db/id_generator.dart';
 import 'models.dart';
+import 'repositories/client_repository.dart';
+import 'repositories/measurement_repository.dart';
+import 'utils/sort_utils.dart';
 
-int _n = 0;
-String newId() => 'id${DateTime.now().microsecondsSinceEpoch}_${_n++}';
+IdGenerator defaultIdGenerator = const UuidV7IdGenerator();
+String newId() => defaultIdGenerator.generate();
 
 DateTime _day(int off, [int h = 0, int m = 0]) => today().add(Duration(days: off, hours: h, minutes: m));
 
-/// Données de démonstration en mémoire (maquette UI/UX, aucun back-end).
-/// Les écrans lisent et modifient ce store ; il suffira plus tard de le brancher à une vraie base.
+/// Store de l'application.
+/// Pour les clients et mesures : façade branchée sur les repositories Drift.
+/// Les autres entités (commandes, modèles, finances, etc.) restent en mémoire pour les tranches suivantes.
 class AppStore extends ChangeNotifier {
-  AppStore() {
-    _seed();
+  AppStore({
+    AppDatabase? db,
+    ClientRepository? clientRepository,
+    MeasurementRepository? measurementRepository,
+  }) : this._(
+          db ?? AppDatabase(),
+          clientRepository,
+          measurementRepository,
+        );
+
+  AppStore._(
+    this._db,
+    ClientRepository? clientRepository,
+    MeasurementRepository? measurementRepository,
+  )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
+        _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db) {
+    _seedInMemory();
   }
+
+  final AppDatabase _db;
+  final ClientRepository _clientRepo;
+  final MeasurementRepository _measurementRepo;
+  StreamSubscription<List<Client>>? _clientSub;
+  StreamSubscription<List<Measurement>>? _measurementSub;
+  bool _initialized = false;
+  bool get isInitialized => _initialized;
+
+  AppDatabase get db => _db;
+  ClientRepository get clientRepo => _clientRepo;
+  MeasurementRepository get measurementRepo => _measurementRepo;
 
   String atelierName = 'Angela Couture';
   List<Client> clients = [];
@@ -29,26 +65,55 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------- Données de démonstration ----------
-  void _seed() {
-    const names = [
-      ('Ama Mensah', '90 12 34 56'), ('Yawa Kpogo', '91 45 67 89'), ('Adjoa Agbodjan', '92 33 21 08'),
-      ('Akouvi Lawson', '90 77 12 40'), ('Afi Dosseh', '93 18 52 66'), ('Edem Amegah', '98 04 31 72'),
-      ('Mawussi Koffi', '97 66 20 15'), ('Abla Tchalla', '91 29 83 47'), ('Dzifa Ayivi', '99 50 14 38'),
-    ];
-    for (var i = 0; i < names.length; i++) {
-      clients.add(Client(id: 'c$i', name: names[i].$1, phone: names[i].$2));
-    }
-    clients[1] = Client(id: 'c1', name: 'Yawa Kpogo', phone: '91 45 67 89', notes: 'Préfère les coupes ajustées.');
+  /// Initialise la persistance Drift (seeding si nécessaire, chargement du cache et écoute des streams).
+  Future<void> init() async {
+    if (_initialized) return;
 
-    for (final c in ['c0', 'c1', 'c2']) {
-      final k = c == 'c0' ? 0 : c == 'c1' ? 2 : 4;
-      measurements.add(Measurement(id: 'm$c', clientId: c, takenAt: _day(-20 - k), values: {
-        'Épaules': 38.0 + k, 'Tour de poitrine': 92.0 + k, 'Tour de taille': 74.0 + k,
-        'Tour de bassin': 100.0 + k, 'Longueur robe': 112, 'Longueur manche': 58,
-      }));
-    }
+    await DemoSeeder(_db).seedIfNecessary();
 
+    final dbClients = await _clientRepo.getAll();
+    clients = _sortClients(dbClients);
+
+    final dbMeasurements = await _measurementRepo.getAll();
+    measurements = _sortMeasurements(dbMeasurements);
+
+    _clientSub?.cancel();
+    _clientSub = _clientRepo.watchAll().listen((list) {
+      clients = _sortClients(list);
+      notifyListeners();
+    });
+
+    _measurementSub?.cancel();
+    _measurementSub = _measurementRepo.watchAll().listen((list) {
+      measurements = _sortMeasurements(list);
+      notifyListeners();
+    });
+
+    _initialized = true;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _clientSub?.cancel();
+    _measurementSub?.cancel();
+    super.dispose();
+  }
+
+  List<Client> _sortClients(List<Client> list) {
+    final copy = List<Client>.from(list);
+    copy.sort((a, b) => compareCaseAndAccentInsensitive(a.name, b.name));
+    return copy;
+  }
+
+  List<Measurement> _sortMeasurements(List<Measurement> list) {
+    final copy = List<Measurement>.from(list);
+    copy.sort((a, b) => b.takenAt.compareTo(a.takenAt));
+    return copy;
+  }
+
+  // ---------- Données de démonstration (entités encore en mémoire) ----------
+  void _seedInMemory() {
     const mods = [
       ('Robe sirène', 'Coupe ajustée jusqu\'aux genoux, évasée en bas.'),
       ('Ensemble pagne', 'Haut cintré et jupe longue assortie.'),
@@ -120,9 +185,9 @@ class AppStore extends ChangeNotifier {
   }
 
   void _sort() {
-    clients.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    clients = _sortClients(clients);
     orders.sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
-    measurements.sort((a, b) => b.takenAt.compareTo(a.takenAt));
+    measurements = _sortMeasurements(measurements);
     clientPayments.sort((a, b) => b.paidAt.compareTo(a.paidAt));
     apprenticePayments.sort((a, b) => b.paidAt.compareTo(a.paidAt));
     apprentices.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
@@ -150,7 +215,8 @@ class AppStore extends ChangeNotifier {
   List<Order> ordersOfClient(String clientId) => orders.where((o) => o.clientId == clientId).toList().reversed.toList();
   List<Measurement> measurementsOf(String clientId) => measurements.where((m) => m.clientId == clientId).toList();
   List<ClientPayment> paymentsOfOrder(String orderId) => clientPayments.where((p) => p.orderId == orderId).toList();
-  List<ApprenticePayment> paymentsOfApprentice(String id) => apprenticePayments.where((p) => p.apprenticeId == id).toList();
+  List<ApprenticePayment> paymentsOfApprentice(String apprenticeId) =>
+      apprenticePayments.where((p) => p.apprenticeId == apprenticeId).toList();
 
   // ---------- Calculs ----------
   int paidOf(Order o) => paymentsOfOrder(o.id).fold(0, (s, p) => s + p.amount);
@@ -165,24 +231,36 @@ class AppStore extends ChangeNotifier {
   List<Order> get activeOrders => orders.where((o) => o.isActive).toList();
   List<Order> get lateOrders => orders.where((o) => o.isActive && daysUntil(o.deliveryDate) < 0).toList();
 
-  // ---------- Écritures (en mémoire) ----------
-  Future<void> saveClient(Client c) async => _put(clients, c, c.id, (x) => x.id);
+  // ---------- Écritures Clients & Mesures (Drift) ----------
+  Future<void> saveClient(Client c) async {
+    await _clientRepo.save(c);
+    clients = _sortClients(await _clientRepo.getAll());
+    notifyListeners();
+  }
 
   Future<void> deleteClient(String id) async {
-    final oids = orders.where((o) => o.clientId == id).map((o) => o.id).toSet();
-    clientPayments.removeWhere((p) => oids.contains(p.orderId));
-    orders.removeWhere((o) => o.clientId == id);
-    measurements.removeWhere((m) => m.clientId == id);
-    clients.removeWhere((c) => c.id == id);
-    _commit();
+    if (ordersOfClient(id).isNotEmpty) {
+      throw StateError('Impossible de supprimer un client ayant des commandes actives.');
+    }
+    await _clientRepo.delete(id);
+    clients = _sortClients(await _clientRepo.getAll());
+    measurements = _sortMeasurements(await _measurementRepo.getAll());
+    notifyListeners();
   }
 
-  Future<void> saveMeasurement(Measurement m) async => _put(measurements, m, m.id, (x) => x.id);
+  Future<void> saveMeasurement(Measurement m) async {
+    await _measurementRepo.save(m);
+    measurements = _sortMeasurements(await _measurementRepo.getAll());
+    notifyListeners();
+  }
+
   Future<void> deleteMeasurement(String id) async {
-    measurements.removeWhere((m) => m.id == id);
-    _commit();
+    await _measurementRepo.delete(id);
+    measurements = _sortMeasurements(await _measurementRepo.getAll());
+    notifyListeners();
   }
 
+  // ---------- Écritures autres entités (en mémoire pour l'instant) ----------
   Future<void> saveOrder(Order o) async => _put(orders, o, o.id, (x) => x.id);
   Future<void> deleteOrder(String id) async {
     clientPayments.removeWhere((p) => p.orderId == id);

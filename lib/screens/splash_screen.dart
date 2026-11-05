@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../data/store.dart';
 import '../shell/app_shell.dart';
 import '../widgets/common.dart';
 
@@ -25,6 +27,9 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _entryZoom;
   late final Animation<double> _flightAnimation;
   late final Animation<double> _contentFadeAnimation;
+
+  Future<void>? _initFuture;
+  String? _initError;
 
   @override
   void initState() {
@@ -69,9 +74,21 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _controller.addStatusListener((status) {
+    _controller.addStatusListener((status) async {
       if (status == AnimationStatus.completed) {
         if (!mounted) return;
+        if (_initFuture != null) {
+          try {
+            await _initFuture;
+          } catch (e) {
+            _initError = e.toString();
+          }
+        }
+        if (!mounted) return;
+        if (_initError != null) {
+          setState(() {});
+          return;
+        }
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => const AppShell(),
@@ -86,6 +103,14 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initFuture ??= context.read<AppStore>().init().catchError((Object err) {
+      _initError = err.toString();
+    });
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -93,6 +118,47 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_initError != null) {
+      return Scaffold(
+        backgroundColor: Pal.chalk,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 56, color: Pal.thread),
+                const SizedBox(height: 16),
+                const Text(
+                  "Impossible d'ouvrir la base de données",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Pal.ink),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _initError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: Pal.slate),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _initError = null;
+                      _initFuture = context.read<AppStore>().init().catchError((Object e) {
+                        setState(() => _initError = e.toString());
+                      });
+                    });
+                  },
+                  child: const Text('Réessayer'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;

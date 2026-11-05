@@ -139,3 +139,13 @@ Côté serveur (Laravel) :
 - `order_photos` gère chaque photo avec son upload state et sa position.
 - Contraintes CHECK sur montants positifs et prix >= 0.
 - `reconcileReceiptCounters()` implémenté pour recalculer le max du compteur après pull serveur.
+
+### Tranche 1 (Clients & Mesures) — Terminée
+- **Repositories** : `ClientRepository` / `DriftClientRepository`, `MeasurementRepository` / `DriftMeasurementRepository`.
+- **Écritures atomiques** : toutes les écritures passent par `AppDatabase.writeWithOutbox` ou transaction multi-tables générant les entrées outbox.
+- **Suppression logique** : `deleted_at = now`, pas de DELETE physique sur les tables synchronisables.
+- **Règle suppression client** : refusée si le client a des commandes actives. Si aucune commande, le client et ses fiches de mesures sont supprimés logiquement dans la même transaction avec entrées outbox distinctes.
+- **Seeding** : `DemoSeeder` n'écrit AUCUNE entrée dans `sync_outbox`. Conditionné à `kDebugMode`, table clients vide et absence de clé `'demo_seeded'`.
+- **Façade AppStore** : `AppStore.init()` charge la base, écoute les streams Drift et met à jour les caches de clients et mesures.
+- **Tris** : insensibles à la casse et aux accents (`compareCaseAndAccentInsensitive`).
+- **Écran de démarrage** : `SplashScreen` initialise `AppStore.init()` pendant la vidéo/animation et gère un écran d'erreur minimaliste en cas d'échec d'ouverture SQLite.
