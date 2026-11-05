@@ -255,6 +255,7 @@ class DemoSeeder {
                     deliveryDate: deliveryDate,
                     fittingDate: Value(fittingDate),
                     status: Value(d.$6),
+                    deliveredAt: const Value(null),
                     photoPath: Value(photoPath),
                     photoUploadState: const Value('none'),
                     createdAt: createdAt,
@@ -277,6 +278,7 @@ class DemoSeeder {
 
             // 5.3 Insertion des versements démo
             final paid = d.$7;
+            final price = d.$4;
             if (paid >= 50000) {
               final first = (paid * .6 / 5000).round() * 5000;
               await db.into(db.clientPayments).insert(
@@ -286,6 +288,8 @@ class DemoSeeder {
                       amount: first,
                       paidAt: day(-(6 + i)),
                       receiptNumber: receiptNo++,
+                      orderPriceAtPayment: price,
+                      balanceAfter: price - first,
                       note: const Value('Acompte'),
                       createdAt: day(-(6 + i)),
                       updatedAt: day(-(6 + i)),
@@ -298,6 +302,8 @@ class DemoSeeder {
                       amount: paid - first,
                       paidAt: day(-(i % 4)),
                       receiptNumber: receiptNo++,
+                      orderPriceAtPayment: price,
+                      balanceAfter: price - paid,
                       note: const Value('Complément'),
                       createdAt: day(-(i % 4)),
                       updatedAt: day(-(i % 4)),
@@ -311,6 +317,8 @@ class DemoSeeder {
                       amount: paid,
                       paidAt: day(-(i % 9)),
                       receiptNumber: receiptNo++,
+                      orderPriceAtPayment: price,
+                      balanceAfter: price - paid,
                       note: const Value('Acompte'),
                       createdAt: day(-(i % 9)),
                       updatedAt: day(-(i % 9)),

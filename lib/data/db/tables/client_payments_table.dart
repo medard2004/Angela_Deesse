@@ -15,8 +15,10 @@ class ClientPayments extends Table {
   IntColumn get paidAt => integer().map(const DateTimeConverter())();
   TextColumn get note => text().withDefault(const Constant(''))();
 
-  // Reçu & Annulation selon Décision 4
+  // Reçu & Annulation selon Décision 4 & Tranche 3A
   IntColumn get receiptNumber => integer()(); // NOT NULL avec index UNIQUE
+  IntColumn get orderPriceAtPayment => integer()(); // Prix de la commande au moment du versement
+  IntColumn get balanceAfter => integer()(); // Solde restant après ce versement (immuable)
   IntColumn get voidedAt => integer().nullable().map(const NullableDateTimeConverter())();
   TextColumn get voidReason => text().nullable()();
 
@@ -28,5 +30,8 @@ class ClientPayments extends Table {
   Set<Column> get primaryKey => {id};
 
   @override
-  List<String> get customConstraints => ['CHECK (amount > 0)'];
+  List<String> get customConstraints => [
+        'CHECK (amount > 0)',
+        'CHECK (balance_after >= 0)',
+      ];
 }

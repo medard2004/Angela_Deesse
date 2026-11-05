@@ -15,8 +15,10 @@ class ApprenticePayments extends Table {
   IntColumn get paidAt => integer().map(const DateTimeConverter())();
   TextColumn get note => text().withDefault(const Constant(''))();
 
-  // Reçu & Annulation selon Décision 4
+  // Reçu & Annulation selon Décision 4 & Tranche 4
   IntColumn get receiptNumber => integer()(); // NOT NULL avec index UNIQUE
+  IntColumn get totalFeeAtPayment => integer()(); // Frais de formation au moment du versement
+  IntColumn get balanceAfter => integer()(); // Solde restant après ce versement (immuable)
   IntColumn get voidedAt => integer().nullable().map(const NullableDateTimeConverter())();
   TextColumn get voidReason => text().nullable()();
 
@@ -28,5 +30,8 @@ class ApprenticePayments extends Table {
   Set<Column> get primaryKey => {id};
 
   @override
-  List<String> get customConstraints => ['CHECK (amount > 0)'];
+  List<String> get customConstraints => [
+        'CHECK (amount > 0)',
+        'CHECK (balance_after >= 0)',
+      ];
 }

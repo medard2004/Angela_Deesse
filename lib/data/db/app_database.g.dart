@@ -1344,6 +1344,11 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, Order> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('attente'));
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> deliveredAt =
+      GeneratedColumn<int>('delivered_at', aliasedName, true,
+              type: DriftSqlType.int, requiredDuringInsert: false)
+          .withConverter<DateTime?>($OrdersTable.$converterdeliveredAt);
   static const VerificationMeta _photoPathMeta =
       const VerificationMeta('photoPath');
   @override
@@ -1390,6 +1395,7 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, Order> {
         deliveryDate,
         fittingDate,
         status,
+        deliveredAt,
         photoPath,
         photoHash,
         photoUploadState,
@@ -1485,6 +1491,9 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, Order> {
           .read(DriftSqlType.int, data['${effectivePrefix}fitting_date'])),
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      deliveredAt: $OrdersTable.$converterdeliveredAt.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}delivered_at'])),
       photoPath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}photo_path']),
       photoHash: attachedDatabase.typeMapping
@@ -1512,6 +1521,8 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, Order> {
       const DateTimeConverter();
   static TypeConverter<DateTime?, int?> $converterfittingDate =
       const NullableDateTimeConverter();
+  static TypeConverter<DateTime?, int?> $converterdeliveredAt =
+      const NullableDateTimeConverter();
   static TypeConverter<DateTime, int> $convertercreatedAt =
       const DateTimeConverter();
   static TypeConverter<DateTime, int> $converterupdatedAt =
@@ -1530,6 +1541,7 @@ class Order extends DataClass implements Insertable<Order> {
   final DateTime deliveryDate;
   final DateTime? fittingDate;
   final String status;
+  final DateTime? deliveredAt;
   final String? photoPath;
   final String? photoHash;
   final String photoUploadState;
@@ -1546,6 +1558,7 @@ class Order extends DataClass implements Insertable<Order> {
       required this.deliveryDate,
       this.fittingDate,
       required this.status,
+      this.deliveredAt,
       this.photoPath,
       this.photoHash,
       required this.photoUploadState,
@@ -1572,6 +1585,10 @@ class Order extends DataClass implements Insertable<Order> {
           Variable<int>($OrdersTable.$converterfittingDate.toSql(fittingDate));
     }
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || deliveredAt != null) {
+      map['delivered_at'] =
+          Variable<int>($OrdersTable.$converterdeliveredAt.toSql(deliveredAt));
+    }
     if (!nullToAbsent || photoPath != null) {
       map['photo_path'] = Variable<String>(photoPath);
     }
@@ -1609,6 +1626,9 @@ class Order extends DataClass implements Insertable<Order> {
           ? const Value.absent()
           : Value(fittingDate),
       status: Value(status),
+      deliveredAt: deliveredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveredAt),
       photoPath: photoPath == null && nullToAbsent
           ? const Value.absent()
           : Value(photoPath),
@@ -1637,6 +1657,7 @@ class Order extends DataClass implements Insertable<Order> {
       deliveryDate: serializer.fromJson<DateTime>(json['deliveryDate']),
       fittingDate: serializer.fromJson<DateTime?>(json['fittingDate']),
       status: serializer.fromJson<String>(json['status']),
+      deliveredAt: serializer.fromJson<DateTime?>(json['deliveredAt']),
       photoPath: serializer.fromJson<String?>(json['photoPath']),
       photoHash: serializer.fromJson<String?>(json['photoHash']),
       photoUploadState: serializer.fromJson<String>(json['photoUploadState']),
@@ -1658,6 +1679,7 @@ class Order extends DataClass implements Insertable<Order> {
       'deliveryDate': serializer.toJson<DateTime>(deliveryDate),
       'fittingDate': serializer.toJson<DateTime?>(fittingDate),
       'status': serializer.toJson<String>(status),
+      'deliveredAt': serializer.toJson<DateTime?>(deliveredAt),
       'photoPath': serializer.toJson<String?>(photoPath),
       'photoHash': serializer.toJson<String?>(photoHash),
       'photoUploadState': serializer.toJson<String>(photoUploadState),
@@ -1677,6 +1699,7 @@ class Order extends DataClass implements Insertable<Order> {
           DateTime? deliveryDate,
           Value<DateTime?> fittingDate = const Value.absent(),
           String? status,
+          Value<DateTime?> deliveredAt = const Value.absent(),
           Value<String?> photoPath = const Value.absent(),
           Value<String?> photoHash = const Value.absent(),
           String? photoUploadState,
@@ -1693,6 +1716,7 @@ class Order extends DataClass implements Insertable<Order> {
         deliveryDate: deliveryDate ?? this.deliveryDate,
         fittingDate: fittingDate.present ? fittingDate.value : this.fittingDate,
         status: status ?? this.status,
+        deliveredAt: deliveredAt.present ? deliveredAt.value : this.deliveredAt,
         photoPath: photoPath.present ? photoPath.value : this.photoPath,
         photoHash: photoHash.present ? photoHash.value : this.photoHash,
         photoUploadState: photoUploadState ?? this.photoUploadState,
@@ -1714,6 +1738,8 @@ class Order extends DataClass implements Insertable<Order> {
       fittingDate:
           data.fittingDate.present ? data.fittingDate.value : this.fittingDate,
       status: data.status.present ? data.status.value : this.status,
+      deliveredAt:
+          data.deliveredAt.present ? data.deliveredAt.value : this.deliveredAt,
       photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
       photoHash: data.photoHash.present ? data.photoHash.value : this.photoHash,
       photoUploadState: data.photoUploadState.present
@@ -1737,6 +1763,7 @@ class Order extends DataClass implements Insertable<Order> {
           ..write('deliveryDate: $deliveryDate, ')
           ..write('fittingDate: $fittingDate, ')
           ..write('status: $status, ')
+          ..write('deliveredAt: $deliveredAt, ')
           ..write('photoPath: $photoPath, ')
           ..write('photoHash: $photoHash, ')
           ..write('photoUploadState: $photoUploadState, ')
@@ -1758,6 +1785,7 @@ class Order extends DataClass implements Insertable<Order> {
       deliveryDate,
       fittingDate,
       status,
+      deliveredAt,
       photoPath,
       photoHash,
       photoUploadState,
@@ -1777,6 +1805,7 @@ class Order extends DataClass implements Insertable<Order> {
           other.deliveryDate == this.deliveryDate &&
           other.fittingDate == this.fittingDate &&
           other.status == this.status &&
+          other.deliveredAt == this.deliveredAt &&
           other.photoPath == this.photoPath &&
           other.photoHash == this.photoHash &&
           other.photoUploadState == this.photoUploadState &&
@@ -1795,6 +1824,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
   final Value<DateTime> deliveryDate;
   final Value<DateTime?> fittingDate;
   final Value<String> status;
+  final Value<DateTime?> deliveredAt;
   final Value<String?> photoPath;
   final Value<String?> photoHash;
   final Value<String> photoUploadState;
@@ -1812,6 +1842,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
     this.deliveryDate = const Value.absent(),
     this.fittingDate = const Value.absent(),
     this.status = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
     this.photoPath = const Value.absent(),
     this.photoHash = const Value.absent(),
     this.photoUploadState = const Value.absent(),
@@ -1830,6 +1861,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
     required DateTime deliveryDate,
     this.fittingDate = const Value.absent(),
     this.status = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
     this.photoPath = const Value.absent(),
     this.photoHash = const Value.absent(),
     this.photoUploadState = const Value.absent(),
@@ -1854,6 +1886,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
     Expression<int>? deliveryDate,
     Expression<int>? fittingDate,
     Expression<String>? status,
+    Expression<int>? deliveredAt,
     Expression<String>? photoPath,
     Expression<String>? photoHash,
     Expression<String>? photoUploadState,
@@ -1872,6 +1905,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
       if (deliveryDate != null) 'delivery_date': deliveryDate,
       if (fittingDate != null) 'fitting_date': fittingDate,
       if (status != null) 'status': status,
+      if (deliveredAt != null) 'delivered_at': deliveredAt,
       if (photoPath != null) 'photo_path': photoPath,
       if (photoHash != null) 'photo_hash': photoHash,
       if (photoUploadState != null) 'photo_upload_state': photoUploadState,
@@ -1892,6 +1926,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
       Value<DateTime>? deliveryDate,
       Value<DateTime?>? fittingDate,
       Value<String>? status,
+      Value<DateTime?>? deliveredAt,
       Value<String?>? photoPath,
       Value<String?>? photoHash,
       Value<String>? photoUploadState,
@@ -1909,6 +1944,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
       deliveryDate: deliveryDate ?? this.deliveryDate,
       fittingDate: fittingDate ?? this.fittingDate,
       status: status ?? this.status,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
       photoPath: photoPath ?? this.photoPath,
       photoHash: photoHash ?? this.photoHash,
       photoUploadState: photoUploadState ?? this.photoUploadState,
@@ -1951,6 +1987,10 @@ class OrdersCompanion extends UpdateCompanion<Order> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (deliveredAt.present) {
+      map['delivered_at'] = Variable<int>(
+          $OrdersTable.$converterdeliveredAt.toSql(deliveredAt.value));
+    }
     if (photoPath.present) {
       map['photo_path'] = Variable<String>(photoPath.value);
     }
@@ -1990,6 +2030,7 @@ class OrdersCompanion extends UpdateCompanion<Order> {
           ..write('deliveryDate: $deliveryDate, ')
           ..write('fittingDate: $fittingDate, ')
           ..write('status: $status, ')
+          ..write('deliveredAt: $deliveredAt, ')
           ..write('photoPath: $photoPath, ')
           ..write('photoHash: $photoHash, ')
           ..write('photoUploadState: $photoUploadState, ')
@@ -2520,6 +2561,18 @@ class $ClientPaymentsTable extends ClientPayments
   late final GeneratedColumn<int> receiptNumber = GeneratedColumn<int>(
       'receipt_number', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _orderPriceAtPaymentMeta =
+      const VerificationMeta('orderPriceAtPayment');
+  @override
+  late final GeneratedColumn<int> orderPriceAtPayment = GeneratedColumn<int>(
+      'order_price_at_payment', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _balanceAfterMeta =
+      const VerificationMeta('balanceAfter');
+  @override
+  late final GeneratedColumn<int> balanceAfter = GeneratedColumn<int>(
+      'balance_after', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
   @override
   late final GeneratedColumnWithTypeConverter<DateTime?, int> voidedAt =
       GeneratedColumn<int>('voided_at', aliasedName, true,
@@ -2554,6 +2607,8 @@ class $ClientPaymentsTable extends ClientPayments
         paidAt,
         note,
         receiptNumber,
+        orderPriceAtPayment,
+        balanceAfter,
         voidedAt,
         voidReason,
         createdAt,
@@ -2599,6 +2654,22 @@ class $ClientPaymentsTable extends ClientPayments
     } else if (isInserting) {
       context.missing(_receiptNumberMeta);
     }
+    if (data.containsKey('order_price_at_payment')) {
+      context.handle(
+          _orderPriceAtPaymentMeta,
+          orderPriceAtPayment.isAcceptableOrUnknown(
+              data['order_price_at_payment']!, _orderPriceAtPaymentMeta));
+    } else if (isInserting) {
+      context.missing(_orderPriceAtPaymentMeta);
+    }
+    if (data.containsKey('balance_after')) {
+      context.handle(
+          _balanceAfterMeta,
+          balanceAfter.isAcceptableOrUnknown(
+              data['balance_after']!, _balanceAfterMeta));
+    } else if (isInserting) {
+      context.missing(_balanceAfterMeta);
+    }
     if (data.containsKey('void_reason')) {
       context.handle(
           _voidReasonMeta,
@@ -2627,6 +2698,10 @@ class $ClientPaymentsTable extends ClientPayments
           .read(DriftSqlType.string, data['${effectivePrefix}note'])!,
       receiptNumber: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}receipt_number'])!,
+      orderPriceAtPayment: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}order_price_at_payment'])!,
+      balanceAfter: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}balance_after'])!,
       voidedAt: $ClientPaymentsTable.$convertervoidedAt.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}voided_at'])),
@@ -2668,6 +2743,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
   final DateTime paidAt;
   final String note;
   final int receiptNumber;
+  final int orderPriceAtPayment;
+  final int balanceAfter;
   final DateTime? voidedAt;
   final String? voidReason;
   final DateTime createdAt;
@@ -2680,6 +2757,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
       required this.paidAt,
       required this.note,
       required this.receiptNumber,
+      required this.orderPriceAtPayment,
+      required this.balanceAfter,
       this.voidedAt,
       this.voidReason,
       required this.createdAt,
@@ -2697,6 +2776,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
     }
     map['note'] = Variable<String>(note);
     map['receipt_number'] = Variable<int>(receiptNumber);
+    map['order_price_at_payment'] = Variable<int>(orderPriceAtPayment);
+    map['balance_after'] = Variable<int>(balanceAfter);
     if (!nullToAbsent || voidedAt != null) {
       map['voided_at'] = Variable<int>(
           $ClientPaymentsTable.$convertervoidedAt.toSql(voidedAt));
@@ -2727,6 +2808,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
       paidAt: Value(paidAt),
       note: Value(note),
       receiptNumber: Value(receiptNumber),
+      orderPriceAtPayment: Value(orderPriceAtPayment),
+      balanceAfter: Value(balanceAfter),
       voidedAt: voidedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(voidedAt),
@@ -2751,6 +2834,9 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
       paidAt: serializer.fromJson<DateTime>(json['paidAt']),
       note: serializer.fromJson<String>(json['note']),
       receiptNumber: serializer.fromJson<int>(json['receiptNumber']),
+      orderPriceAtPayment:
+          serializer.fromJson<int>(json['orderPriceAtPayment']),
+      balanceAfter: serializer.fromJson<int>(json['balanceAfter']),
       voidedAt: serializer.fromJson<DateTime?>(json['voidedAt']),
       voidReason: serializer.fromJson<String?>(json['voidReason']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -2768,6 +2854,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
       'paidAt': serializer.toJson<DateTime>(paidAt),
       'note': serializer.toJson<String>(note),
       'receiptNumber': serializer.toJson<int>(receiptNumber),
+      'orderPriceAtPayment': serializer.toJson<int>(orderPriceAtPayment),
+      'balanceAfter': serializer.toJson<int>(balanceAfter),
       'voidedAt': serializer.toJson<DateTime?>(voidedAt),
       'voidReason': serializer.toJson<String?>(voidReason),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -2783,6 +2871,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
           DateTime? paidAt,
           String? note,
           int? receiptNumber,
+          int? orderPriceAtPayment,
+          int? balanceAfter,
           Value<DateTime?> voidedAt = const Value.absent(),
           Value<String?> voidReason = const Value.absent(),
           DateTime? createdAt,
@@ -2795,6 +2885,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
         paidAt: paidAt ?? this.paidAt,
         note: note ?? this.note,
         receiptNumber: receiptNumber ?? this.receiptNumber,
+        orderPriceAtPayment: orderPriceAtPayment ?? this.orderPriceAtPayment,
+        balanceAfter: balanceAfter ?? this.balanceAfter,
         voidedAt: voidedAt.present ? voidedAt.value : this.voidedAt,
         voidReason: voidReason.present ? voidReason.value : this.voidReason,
         createdAt: createdAt ?? this.createdAt,
@@ -2811,6 +2903,12 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
       receiptNumber: data.receiptNumber.present
           ? data.receiptNumber.value
           : this.receiptNumber,
+      orderPriceAtPayment: data.orderPriceAtPayment.present
+          ? data.orderPriceAtPayment.value
+          : this.orderPriceAtPayment,
+      balanceAfter: data.balanceAfter.present
+          ? data.balanceAfter.value
+          : this.balanceAfter,
       voidedAt: data.voidedAt.present ? data.voidedAt.value : this.voidedAt,
       voidReason:
           data.voidReason.present ? data.voidReason.value : this.voidReason,
@@ -2829,6 +2927,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
           ..write('paidAt: $paidAt, ')
           ..write('note: $note, ')
           ..write('receiptNumber: $receiptNumber, ')
+          ..write('orderPriceAtPayment: $orderPriceAtPayment, ')
+          ..write('balanceAfter: $balanceAfter, ')
           ..write('voidedAt: $voidedAt, ')
           ..write('voidReason: $voidReason, ')
           ..write('createdAt: $createdAt, ')
@@ -2839,8 +2939,20 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
   }
 
   @override
-  int get hashCode => Object.hash(id, orderId, amount, paidAt, note,
-      receiptNumber, voidedAt, voidReason, createdAt, updatedAt, deletedAt);
+  int get hashCode => Object.hash(
+      id,
+      orderId,
+      amount,
+      paidAt,
+      note,
+      receiptNumber,
+      orderPriceAtPayment,
+      balanceAfter,
+      voidedAt,
+      voidReason,
+      createdAt,
+      updatedAt,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2851,6 +2963,8 @@ class ClientPayment extends DataClass implements Insertable<ClientPayment> {
           other.paidAt == this.paidAt &&
           other.note == this.note &&
           other.receiptNumber == this.receiptNumber &&
+          other.orderPriceAtPayment == this.orderPriceAtPayment &&
+          other.balanceAfter == this.balanceAfter &&
           other.voidedAt == this.voidedAt &&
           other.voidReason == this.voidReason &&
           other.createdAt == this.createdAt &&
@@ -2865,6 +2979,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
   final Value<DateTime> paidAt;
   final Value<String> note;
   final Value<int> receiptNumber;
+  final Value<int> orderPriceAtPayment;
+  final Value<int> balanceAfter;
   final Value<DateTime?> voidedAt;
   final Value<String?> voidReason;
   final Value<DateTime> createdAt;
@@ -2878,6 +2994,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
     this.paidAt = const Value.absent(),
     this.note = const Value.absent(),
     this.receiptNumber = const Value.absent(),
+    this.orderPriceAtPayment = const Value.absent(),
+    this.balanceAfter = const Value.absent(),
     this.voidedAt = const Value.absent(),
     this.voidReason = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2892,6 +3010,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
     required DateTime paidAt,
     this.note = const Value.absent(),
     required int receiptNumber,
+    required int orderPriceAtPayment,
+    required int balanceAfter,
     this.voidedAt = const Value.absent(),
     this.voidReason = const Value.absent(),
     required DateTime createdAt,
@@ -2903,6 +3023,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
         amount = Value(amount),
         paidAt = Value(paidAt),
         receiptNumber = Value(receiptNumber),
+        orderPriceAtPayment = Value(orderPriceAtPayment),
+        balanceAfter = Value(balanceAfter),
         createdAt = Value(createdAt),
         updatedAt = Value(updatedAt);
   static Insertable<ClientPayment> custom({
@@ -2912,6 +3034,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
     Expression<int>? paidAt,
     Expression<String>? note,
     Expression<int>? receiptNumber,
+    Expression<int>? orderPriceAtPayment,
+    Expression<int>? balanceAfter,
     Expression<int>? voidedAt,
     Expression<String>? voidReason,
     Expression<int>? createdAt,
@@ -2926,6 +3050,9 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
       if (paidAt != null) 'paid_at': paidAt,
       if (note != null) 'note': note,
       if (receiptNumber != null) 'receipt_number': receiptNumber,
+      if (orderPriceAtPayment != null)
+        'order_price_at_payment': orderPriceAtPayment,
+      if (balanceAfter != null) 'balance_after': balanceAfter,
       if (voidedAt != null) 'voided_at': voidedAt,
       if (voidReason != null) 'void_reason': voidReason,
       if (createdAt != null) 'created_at': createdAt,
@@ -2942,6 +3069,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
       Value<DateTime>? paidAt,
       Value<String>? note,
       Value<int>? receiptNumber,
+      Value<int>? orderPriceAtPayment,
+      Value<int>? balanceAfter,
       Value<DateTime?>? voidedAt,
       Value<String?>? voidReason,
       Value<DateTime>? createdAt,
@@ -2955,6 +3084,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
       paidAt: paidAt ?? this.paidAt,
       note: note ?? this.note,
       receiptNumber: receiptNumber ?? this.receiptNumber,
+      orderPriceAtPayment: orderPriceAtPayment ?? this.orderPriceAtPayment,
+      balanceAfter: balanceAfter ?? this.balanceAfter,
       voidedAt: voidedAt ?? this.voidedAt,
       voidReason: voidReason ?? this.voidReason,
       createdAt: createdAt ?? this.createdAt,
@@ -2985,6 +3116,12 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
     }
     if (receiptNumber.present) {
       map['receipt_number'] = Variable<int>(receiptNumber.value);
+    }
+    if (orderPriceAtPayment.present) {
+      map['order_price_at_payment'] = Variable<int>(orderPriceAtPayment.value);
+    }
+    if (balanceAfter.present) {
+      map['balance_after'] = Variable<int>(balanceAfter.value);
     }
     if (voidedAt.present) {
       map['voided_at'] = Variable<int>(
@@ -3020,6 +3157,8 @@ class ClientPaymentsCompanion extends UpdateCompanion<ClientPayment> {
           ..write('paidAt: $paidAt, ')
           ..write('note: $note, ')
           ..write('receiptNumber: $receiptNumber, ')
+          ..write('orderPriceAtPayment: $orderPriceAtPayment, ')
+          ..write('balanceAfter: $balanceAfter, ')
           ..write('voidedAt: $voidedAt, ')
           ..write('voidReason: $voidReason, ')
           ..write('createdAt: $createdAt, ')
@@ -3577,6 +3716,18 @@ class $ApprenticePaymentsTable extends ApprenticePayments
   late final GeneratedColumn<int> receiptNumber = GeneratedColumn<int>(
       'receipt_number', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _totalFeeAtPaymentMeta =
+      const VerificationMeta('totalFeeAtPayment');
+  @override
+  late final GeneratedColumn<int> totalFeeAtPayment = GeneratedColumn<int>(
+      'total_fee_at_payment', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _balanceAfterMeta =
+      const VerificationMeta('balanceAfter');
+  @override
+  late final GeneratedColumn<int> balanceAfter = GeneratedColumn<int>(
+      'balance_after', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
   @override
   late final GeneratedColumnWithTypeConverter<DateTime?, int> voidedAt =
       GeneratedColumn<int>('voided_at', aliasedName, true,
@@ -3615,6 +3766,8 @@ class $ApprenticePaymentsTable extends ApprenticePayments
         paidAt,
         note,
         receiptNumber,
+        totalFeeAtPayment,
+        balanceAfter,
         voidedAt,
         voidReason,
         createdAt,
@@ -3662,6 +3815,22 @@ class $ApprenticePaymentsTable extends ApprenticePayments
     } else if (isInserting) {
       context.missing(_receiptNumberMeta);
     }
+    if (data.containsKey('total_fee_at_payment')) {
+      context.handle(
+          _totalFeeAtPaymentMeta,
+          totalFeeAtPayment.isAcceptableOrUnknown(
+              data['total_fee_at_payment']!, _totalFeeAtPaymentMeta));
+    } else if (isInserting) {
+      context.missing(_totalFeeAtPaymentMeta);
+    }
+    if (data.containsKey('balance_after')) {
+      context.handle(
+          _balanceAfterMeta,
+          balanceAfter.isAcceptableOrUnknown(
+              data['balance_after']!, _balanceAfterMeta));
+    } else if (isInserting) {
+      context.missing(_balanceAfterMeta);
+    }
     if (data.containsKey('void_reason')) {
       context.handle(
           _voidReasonMeta,
@@ -3690,6 +3859,10 @@ class $ApprenticePaymentsTable extends ApprenticePayments
           .read(DriftSqlType.string, data['${effectivePrefix}note'])!,
       receiptNumber: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}receipt_number'])!,
+      totalFeeAtPayment: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}total_fee_at_payment'])!,
+      balanceAfter: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}balance_after'])!,
       voidedAt: $ApprenticePaymentsTable.$convertervoidedAt.fromSql(
           attachedDatabase.typeMapping
               .read(DriftSqlType.int, data['${effectivePrefix}voided_at'])),
@@ -3732,6 +3905,8 @@ class ApprenticePayment extends DataClass
   final DateTime paidAt;
   final String note;
   final int receiptNumber;
+  final int totalFeeAtPayment;
+  final int balanceAfter;
   final DateTime? voidedAt;
   final String? voidReason;
   final DateTime createdAt;
@@ -3744,6 +3919,8 @@ class ApprenticePayment extends DataClass
       required this.paidAt,
       required this.note,
       required this.receiptNumber,
+      required this.totalFeeAtPayment,
+      required this.balanceAfter,
       this.voidedAt,
       this.voidReason,
       required this.createdAt,
@@ -3761,6 +3938,8 @@ class ApprenticePayment extends DataClass
     }
     map['note'] = Variable<String>(note);
     map['receipt_number'] = Variable<int>(receiptNumber);
+    map['total_fee_at_payment'] = Variable<int>(totalFeeAtPayment);
+    map['balance_after'] = Variable<int>(balanceAfter);
     if (!nullToAbsent || voidedAt != null) {
       map['voided_at'] = Variable<int>(
           $ApprenticePaymentsTable.$convertervoidedAt.toSql(voidedAt));
@@ -3791,6 +3970,8 @@ class ApprenticePayment extends DataClass
       paidAt: Value(paidAt),
       note: Value(note),
       receiptNumber: Value(receiptNumber),
+      totalFeeAtPayment: Value(totalFeeAtPayment),
+      balanceAfter: Value(balanceAfter),
       voidedAt: voidedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(voidedAt),
@@ -3815,6 +3996,8 @@ class ApprenticePayment extends DataClass
       paidAt: serializer.fromJson<DateTime>(json['paidAt']),
       note: serializer.fromJson<String>(json['note']),
       receiptNumber: serializer.fromJson<int>(json['receiptNumber']),
+      totalFeeAtPayment: serializer.fromJson<int>(json['totalFeeAtPayment']),
+      balanceAfter: serializer.fromJson<int>(json['balanceAfter']),
       voidedAt: serializer.fromJson<DateTime?>(json['voidedAt']),
       voidReason: serializer.fromJson<String?>(json['voidReason']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -3832,6 +4015,8 @@ class ApprenticePayment extends DataClass
       'paidAt': serializer.toJson<DateTime>(paidAt),
       'note': serializer.toJson<String>(note),
       'receiptNumber': serializer.toJson<int>(receiptNumber),
+      'totalFeeAtPayment': serializer.toJson<int>(totalFeeAtPayment),
+      'balanceAfter': serializer.toJson<int>(balanceAfter),
       'voidedAt': serializer.toJson<DateTime?>(voidedAt),
       'voidReason': serializer.toJson<String?>(voidReason),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -3847,6 +4032,8 @@ class ApprenticePayment extends DataClass
           DateTime? paidAt,
           String? note,
           int? receiptNumber,
+          int? totalFeeAtPayment,
+          int? balanceAfter,
           Value<DateTime?> voidedAt = const Value.absent(),
           Value<String?> voidReason = const Value.absent(),
           DateTime? createdAt,
@@ -3859,6 +4046,8 @@ class ApprenticePayment extends DataClass
         paidAt: paidAt ?? this.paidAt,
         note: note ?? this.note,
         receiptNumber: receiptNumber ?? this.receiptNumber,
+        totalFeeAtPayment: totalFeeAtPayment ?? this.totalFeeAtPayment,
+        balanceAfter: balanceAfter ?? this.balanceAfter,
         voidedAt: voidedAt.present ? voidedAt.value : this.voidedAt,
         voidReason: voidReason.present ? voidReason.value : this.voidReason,
         createdAt: createdAt ?? this.createdAt,
@@ -3877,6 +4066,12 @@ class ApprenticePayment extends DataClass
       receiptNumber: data.receiptNumber.present
           ? data.receiptNumber.value
           : this.receiptNumber,
+      totalFeeAtPayment: data.totalFeeAtPayment.present
+          ? data.totalFeeAtPayment.value
+          : this.totalFeeAtPayment,
+      balanceAfter: data.balanceAfter.present
+          ? data.balanceAfter.value
+          : this.balanceAfter,
       voidedAt: data.voidedAt.present ? data.voidedAt.value : this.voidedAt,
       voidReason:
           data.voidReason.present ? data.voidReason.value : this.voidReason,
@@ -3895,6 +4090,8 @@ class ApprenticePayment extends DataClass
           ..write('paidAt: $paidAt, ')
           ..write('note: $note, ')
           ..write('receiptNumber: $receiptNumber, ')
+          ..write('totalFeeAtPayment: $totalFeeAtPayment, ')
+          ..write('balanceAfter: $balanceAfter, ')
           ..write('voidedAt: $voidedAt, ')
           ..write('voidReason: $voidReason, ')
           ..write('createdAt: $createdAt, ')
@@ -3905,8 +4102,20 @@ class ApprenticePayment extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, apprenticeId, amount, paidAt, note,
-      receiptNumber, voidedAt, voidReason, createdAt, updatedAt, deletedAt);
+  int get hashCode => Object.hash(
+      id,
+      apprenticeId,
+      amount,
+      paidAt,
+      note,
+      receiptNumber,
+      totalFeeAtPayment,
+      balanceAfter,
+      voidedAt,
+      voidReason,
+      createdAt,
+      updatedAt,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3917,6 +4126,8 @@ class ApprenticePayment extends DataClass
           other.paidAt == this.paidAt &&
           other.note == this.note &&
           other.receiptNumber == this.receiptNumber &&
+          other.totalFeeAtPayment == this.totalFeeAtPayment &&
+          other.balanceAfter == this.balanceAfter &&
           other.voidedAt == this.voidedAt &&
           other.voidReason == this.voidReason &&
           other.createdAt == this.createdAt &&
@@ -3931,6 +4142,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
   final Value<DateTime> paidAt;
   final Value<String> note;
   final Value<int> receiptNumber;
+  final Value<int> totalFeeAtPayment;
+  final Value<int> balanceAfter;
   final Value<DateTime?> voidedAt;
   final Value<String?> voidReason;
   final Value<DateTime> createdAt;
@@ -3944,6 +4157,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
     this.paidAt = const Value.absent(),
     this.note = const Value.absent(),
     this.receiptNumber = const Value.absent(),
+    this.totalFeeAtPayment = const Value.absent(),
+    this.balanceAfter = const Value.absent(),
     this.voidedAt = const Value.absent(),
     this.voidReason = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3958,6 +4173,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
     required DateTime paidAt,
     this.note = const Value.absent(),
     required int receiptNumber,
+    required int totalFeeAtPayment,
+    required int balanceAfter,
     this.voidedAt = const Value.absent(),
     this.voidReason = const Value.absent(),
     required DateTime createdAt,
@@ -3969,6 +4186,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
         amount = Value(amount),
         paidAt = Value(paidAt),
         receiptNumber = Value(receiptNumber),
+        totalFeeAtPayment = Value(totalFeeAtPayment),
+        balanceAfter = Value(balanceAfter),
         createdAt = Value(createdAt),
         updatedAt = Value(updatedAt);
   static Insertable<ApprenticePayment> custom({
@@ -3978,6 +4197,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
     Expression<int>? paidAt,
     Expression<String>? note,
     Expression<int>? receiptNumber,
+    Expression<int>? totalFeeAtPayment,
+    Expression<int>? balanceAfter,
     Expression<int>? voidedAt,
     Expression<String>? voidReason,
     Expression<int>? createdAt,
@@ -3992,6 +4213,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
       if (paidAt != null) 'paid_at': paidAt,
       if (note != null) 'note': note,
       if (receiptNumber != null) 'receipt_number': receiptNumber,
+      if (totalFeeAtPayment != null) 'total_fee_at_payment': totalFeeAtPayment,
+      if (balanceAfter != null) 'balance_after': balanceAfter,
       if (voidedAt != null) 'voided_at': voidedAt,
       if (voidReason != null) 'void_reason': voidReason,
       if (createdAt != null) 'created_at': createdAt,
@@ -4008,6 +4231,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
       Value<DateTime>? paidAt,
       Value<String>? note,
       Value<int>? receiptNumber,
+      Value<int>? totalFeeAtPayment,
+      Value<int>? balanceAfter,
       Value<DateTime?>? voidedAt,
       Value<String?>? voidReason,
       Value<DateTime>? createdAt,
@@ -4021,6 +4246,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
       paidAt: paidAt ?? this.paidAt,
       note: note ?? this.note,
       receiptNumber: receiptNumber ?? this.receiptNumber,
+      totalFeeAtPayment: totalFeeAtPayment ?? this.totalFeeAtPayment,
+      balanceAfter: balanceAfter ?? this.balanceAfter,
       voidedAt: voidedAt ?? this.voidedAt,
       voidReason: voidReason ?? this.voidReason,
       createdAt: createdAt ?? this.createdAt,
@@ -4051,6 +4278,12 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
     }
     if (receiptNumber.present) {
       map['receipt_number'] = Variable<int>(receiptNumber.value);
+    }
+    if (totalFeeAtPayment.present) {
+      map['total_fee_at_payment'] = Variable<int>(totalFeeAtPayment.value);
+    }
+    if (balanceAfter.present) {
+      map['balance_after'] = Variable<int>(balanceAfter.value);
     }
     if (voidedAt.present) {
       map['voided_at'] = Variable<int>(
@@ -4086,6 +4319,8 @@ class ApprenticePaymentsCompanion extends UpdateCompanion<ApprenticePayment> {
           ..write('paidAt: $paidAt, ')
           ..write('note: $note, ')
           ..write('receiptNumber: $receiptNumber, ')
+          ..write('totalFeeAtPayment: $totalFeeAtPayment, ')
+          ..write('balanceAfter: $balanceAfter, ')
           ..write('voidedAt: $voidedAt, ')
           ..write('voidReason: $voidReason, ')
           ..write('createdAt: $createdAt, ')
@@ -5813,6 +6048,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       'CREATE INDEX idx_orders_delivery_date ON orders (delivery_date)');
   late final Index idxOrdersStatus = Index(
       'idx_orders_status', 'CREATE INDEX idx_orders_status ON orders (status)');
+  late final Index idxOrdersDeliveredAt = Index('idx_orders_delivered_at',
+      'CREATE INDEX idx_orders_delivered_at ON orders (delivered_at)');
   late final Index idxOrdersDeletedAt = Index('idx_orders_deleted_at',
       'CREATE INDEX idx_orders_deleted_at ON orders (deleted_at)');
   late final Index idxOrdersUpdatedAt = Index('idx_orders_updated_at',
@@ -5919,6 +6156,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         idxOrdersModeleId,
         idxOrdersDeliveryDate,
         idxOrdersStatus,
+        idxOrdersDeliveredAt,
         idxOrdersDeletedAt,
         idxOrdersUpdatedAt,
         idxOrderPhotosOrderId,
@@ -7038,6 +7276,7 @@ typedef $$OrdersTableCreateCompanionBuilder = OrdersCompanion Function({
   required DateTime deliveryDate,
   Value<DateTime?> fittingDate,
   Value<String> status,
+  Value<DateTime?> deliveredAt,
   Value<String?> photoPath,
   Value<String?> photoHash,
   Value<String> photoUploadState,
@@ -7056,6 +7295,7 @@ typedef $$OrdersTableUpdateCompanionBuilder = OrdersCompanion Function({
   Value<DateTime> deliveryDate,
   Value<DateTime?> fittingDate,
   Value<String> status,
+  Value<DateTime?> deliveredAt,
   Value<String?> photoPath,
   Value<String?> photoHash,
   Value<String> photoUploadState,
@@ -7159,6 +7399,11 @@ class $$OrdersTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get deliveredAt =>
+      $composableBuilder(
+          column: $table.deliveredAt,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 
   ColumnFilters<String> get photoPath => $composableBuilder(
       column: $table.photoPath, builder: (column) => ColumnFilters(column));
@@ -7299,6 +7544,9 @@ class $$OrdersTableOrderingComposer
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get deliveredAt => $composableBuilder(
+      column: $table.deliveredAt, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get photoPath => $composableBuilder(
       column: $table.photoPath, builder: (column) => ColumnOrderings(column));
 
@@ -7390,6 +7638,10 @@ class $$OrdersTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get deliveredAt =>
+      $composableBuilder(
+          column: $table.deliveredAt, builder: (column) => column);
 
   GeneratedColumn<String> get photoPath =>
       $composableBuilder(column: $table.photoPath, builder: (column) => column);
@@ -7528,6 +7780,7 @@ class $$OrdersTableTableManager extends RootTableManager<
             Value<DateTime> deliveryDate = const Value.absent(),
             Value<DateTime?> fittingDate = const Value.absent(),
             Value<String> status = const Value.absent(),
+            Value<DateTime?> deliveredAt = const Value.absent(),
             Value<String?> photoPath = const Value.absent(),
             Value<String?> photoHash = const Value.absent(),
             Value<String> photoUploadState = const Value.absent(),
@@ -7546,6 +7799,7 @@ class $$OrdersTableTableManager extends RootTableManager<
             deliveryDate: deliveryDate,
             fittingDate: fittingDate,
             status: status,
+            deliveredAt: deliveredAt,
             photoPath: photoPath,
             photoHash: photoHash,
             photoUploadState: photoUploadState,
@@ -7564,6 +7818,7 @@ class $$OrdersTableTableManager extends RootTableManager<
             required DateTime deliveryDate,
             Value<DateTime?> fittingDate = const Value.absent(),
             Value<String> status = const Value.absent(),
+            Value<DateTime?> deliveredAt = const Value.absent(),
             Value<String?> photoPath = const Value.absent(),
             Value<String?> photoHash = const Value.absent(),
             Value<String> photoUploadState = const Value.absent(),
@@ -7582,6 +7837,7 @@ class $$OrdersTableTableManager extends RootTableManager<
             deliveryDate: deliveryDate,
             fittingDate: fittingDate,
             status: status,
+            deliveredAt: deliveredAt,
             photoPath: photoPath,
             photoHash: photoHash,
             photoUploadState: photoUploadState,
@@ -8039,6 +8295,8 @@ typedef $$ClientPaymentsTableCreateCompanionBuilder = ClientPaymentsCompanion
   required DateTime paidAt,
   Value<String> note,
   required int receiptNumber,
+  required int orderPriceAtPayment,
+  required int balanceAfter,
   Value<DateTime?> voidedAt,
   Value<String?> voidReason,
   required DateTime createdAt,
@@ -8054,6 +8312,8 @@ typedef $$ClientPaymentsTableUpdateCompanionBuilder = ClientPaymentsCompanion
   Value<DateTime> paidAt,
   Value<String> note,
   Value<int> receiptNumber,
+  Value<int> orderPriceAtPayment,
+  Value<int> balanceAfter,
   Value<DateTime?> voidedAt,
   Value<String?> voidReason,
   Value<DateTime> createdAt,
@@ -8107,6 +8367,13 @@ class $$ClientPaymentsTableFilterComposer
 
   ColumnFilters<int> get receiptNumber => $composableBuilder(
       column: $table.receiptNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get orderPriceAtPayment => $composableBuilder(
+      column: $table.orderPriceAtPayment,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get balanceAfter => $composableBuilder(
+      column: $table.balanceAfter, builder: (column) => ColumnFilters(column));
 
   ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get voidedAt =>
       $composableBuilder(
@@ -8177,6 +8444,14 @@ class $$ClientPaymentsTableOrderingComposer
       column: $table.receiptNumber,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get orderPriceAtPayment => $composableBuilder(
+      column: $table.orderPriceAtPayment,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get balanceAfter => $composableBuilder(
+      column: $table.balanceAfter,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get voidedAt => $composableBuilder(
       column: $table.voidedAt, builder: (column) => ColumnOrderings(column));
 
@@ -8236,6 +8511,12 @@ class $$ClientPaymentsTableAnnotationComposer
 
   GeneratedColumn<int> get receiptNumber => $composableBuilder(
       column: $table.receiptNumber, builder: (column) => column);
+
+  GeneratedColumn<int> get orderPriceAtPayment => $composableBuilder(
+      column: $table.orderPriceAtPayment, builder: (column) => column);
+
+  GeneratedColumn<int> get balanceAfter => $composableBuilder(
+      column: $table.balanceAfter, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<DateTime?, int> get voidedAt =>
       $composableBuilder(column: $table.voidedAt, builder: (column) => column);
@@ -8303,6 +8584,8 @@ class $$ClientPaymentsTableTableManager extends RootTableManager<
             Value<DateTime> paidAt = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<int> receiptNumber = const Value.absent(),
+            Value<int> orderPriceAtPayment = const Value.absent(),
+            Value<int> balanceAfter = const Value.absent(),
             Value<DateTime?> voidedAt = const Value.absent(),
             Value<String?> voidReason = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -8317,6 +8600,8 @@ class $$ClientPaymentsTableTableManager extends RootTableManager<
             paidAt: paidAt,
             note: note,
             receiptNumber: receiptNumber,
+            orderPriceAtPayment: orderPriceAtPayment,
+            balanceAfter: balanceAfter,
             voidedAt: voidedAt,
             voidReason: voidReason,
             createdAt: createdAt,
@@ -8331,6 +8616,8 @@ class $$ClientPaymentsTableTableManager extends RootTableManager<
             required DateTime paidAt,
             Value<String> note = const Value.absent(),
             required int receiptNumber,
+            required int orderPriceAtPayment,
+            required int balanceAfter,
             Value<DateTime?> voidedAt = const Value.absent(),
             Value<String?> voidReason = const Value.absent(),
             required DateTime createdAt,
@@ -8345,6 +8632,8 @@ class $$ClientPaymentsTableTableManager extends RootTableManager<
             paidAt: paidAt,
             note: note,
             receiptNumber: receiptNumber,
+            orderPriceAtPayment: orderPriceAtPayment,
+            balanceAfter: balanceAfter,
             voidedAt: voidedAt,
             voidReason: voidReason,
             createdAt: createdAt,
@@ -8761,6 +9050,8 @@ typedef $$ApprenticePaymentsTableCreateCompanionBuilder
   required DateTime paidAt,
   Value<String> note,
   required int receiptNumber,
+  required int totalFeeAtPayment,
+  required int balanceAfter,
   Value<DateTime?> voidedAt,
   Value<String?> voidReason,
   required DateTime createdAt,
@@ -8776,6 +9067,8 @@ typedef $$ApprenticePaymentsTableUpdateCompanionBuilder
   Value<DateTime> paidAt,
   Value<String> note,
   Value<int> receiptNumber,
+  Value<int> totalFeeAtPayment,
+  Value<int> balanceAfter,
   Value<DateTime?> voidedAt,
   Value<String?> voidReason,
   Value<DateTime> createdAt,
@@ -8830,6 +9123,13 @@ class $$ApprenticePaymentsTableFilterComposer
 
   ColumnFilters<int> get receiptNumber => $composableBuilder(
       column: $table.receiptNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get totalFeeAtPayment => $composableBuilder(
+      column: $table.totalFeeAtPayment,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get balanceAfter => $composableBuilder(
+      column: $table.balanceAfter, builder: (column) => ColumnFilters(column));
 
   ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get voidedAt =>
       $composableBuilder(
@@ -8900,6 +9200,14 @@ class $$ApprenticePaymentsTableOrderingComposer
       column: $table.receiptNumber,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get totalFeeAtPayment => $composableBuilder(
+      column: $table.totalFeeAtPayment,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get balanceAfter => $composableBuilder(
+      column: $table.balanceAfter,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get voidedAt => $composableBuilder(
       column: $table.voidedAt, builder: (column) => ColumnOrderings(column));
 
@@ -8959,6 +9267,12 @@ class $$ApprenticePaymentsTableAnnotationComposer
 
   GeneratedColumn<int> get receiptNumber => $composableBuilder(
       column: $table.receiptNumber, builder: (column) => column);
+
+  GeneratedColumn<int> get totalFeeAtPayment => $composableBuilder(
+      column: $table.totalFeeAtPayment, builder: (column) => column);
+
+  GeneratedColumn<int> get balanceAfter => $composableBuilder(
+      column: $table.balanceAfter, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<DateTime?, int> get voidedAt =>
       $composableBuilder(column: $table.voidedAt, builder: (column) => column);
@@ -9027,6 +9341,8 @@ class $$ApprenticePaymentsTableTableManager extends RootTableManager<
             Value<DateTime> paidAt = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<int> receiptNumber = const Value.absent(),
+            Value<int> totalFeeAtPayment = const Value.absent(),
+            Value<int> balanceAfter = const Value.absent(),
             Value<DateTime?> voidedAt = const Value.absent(),
             Value<String?> voidReason = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -9041,6 +9357,8 @@ class $$ApprenticePaymentsTableTableManager extends RootTableManager<
             paidAt: paidAt,
             note: note,
             receiptNumber: receiptNumber,
+            totalFeeAtPayment: totalFeeAtPayment,
+            balanceAfter: balanceAfter,
             voidedAt: voidedAt,
             voidReason: voidReason,
             createdAt: createdAt,
@@ -9055,6 +9373,8 @@ class $$ApprenticePaymentsTableTableManager extends RootTableManager<
             required DateTime paidAt,
             Value<String> note = const Value.absent(),
             required int receiptNumber,
+            required int totalFeeAtPayment,
+            required int balanceAfter,
             Value<DateTime?> voidedAt = const Value.absent(),
             Value<String?> voidReason = const Value.absent(),
             required DateTime createdAt,
@@ -9069,6 +9389,8 @@ class $$ApprenticePaymentsTableTableManager extends RootTableManager<
             paidAt: paidAt,
             note: note,
             receiptNumber: receiptNumber,
+            totalFeeAtPayment: totalFeeAtPayment,
+            balanceAfter: balanceAfter,
             voidedAt: voidedAt,
             voidReason: voidReason,
             createdAt: createdAt,

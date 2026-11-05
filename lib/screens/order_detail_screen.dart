@@ -9,14 +9,10 @@ class OrderDetailScreen extends StatelessWidget {
 
   void _openReceiptForClientPayment(BuildContext context, Order o, Client? client, ClientPayment cp) {
     final s = context.read<AppStore>();
-    final toDate = s.activePaymentsOf(o.id)
-        .where((p) => p.receiptNumber <= cp.receiptNumber)
-        .fold(0, (sum, p) => sum + p.amount);
-    final remaining = (o.price - toDate).clamp(0, 1 << 40).toInt();
     final receiptFormatted = 'CMD-${cp.receiptNumber.toString().padLeft(4, '0')}';
     final stamp = cp.isVoided
         ? 'ANNULÉ'
-        : (remaining <= 0 ? 'SOLDÉ' : 'PAYÉ');
+        : (cp.balanceAfter <= 0 ? 'SOLDÉ' : 'VERSÉ');
 
     openReceiptScreen(
       context,
@@ -30,9 +26,9 @@ class OrderDetailScreen extends StatelessWidget {
         date: cp.paidAt,
         amountPaid: cp.amount,
         note: cp.note.isEmpty ? 'Paiement commande' : cp.note,
-        totalFee: o.price,
-        totalPaidToDate: toDate,
-        remainingAmount: remaining,
+        totalFee: cp.orderPriceAtPayment,
+        totalPaidToDate: cp.orderPriceAtPayment - cp.balanceAfter,
+        remainingAmount: cp.balanceAfter,
         nextDueDate: o.deliveryDate,
         stampText: stamp,
         itemDetail: o.title,

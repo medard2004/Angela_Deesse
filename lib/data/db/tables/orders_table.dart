@@ -7,6 +7,7 @@ import 'modeles_table.dart';
 @TableIndex(name: 'idx_orders_modele_id', columns: {#modeleId})
 @TableIndex(name: 'idx_orders_delivery_date', columns: {#deliveryDate})
 @TableIndex(name: 'idx_orders_status', columns: {#status})
+@TableIndex(name: 'idx_orders_delivered_at', columns: {#deliveredAt})
 @TableIndex(name: 'idx_orders_deleted_at', columns: {#deletedAt})
 @TableIndex(name: 'idx_orders_updated_at', columns: {#updatedAt})
 class Orders extends Table {
@@ -19,6 +20,7 @@ class Orders extends Table {
   IntColumn get deliveryDate => integer().map(const DateTimeConverter())();
   IntColumn get fittingDate => integer().nullable().map(const NullableDateTimeConverter())();
   TextColumn get status => text().withDefault(const Constant('attente'))(); // attente, cours, prete, livree
+  IntColumn get deliveredAt => integer().nullable().map(const NullableDateTimeConverter())();
 
   // Photo selon Décision 5
   TextColumn get photoPath => text().nullable()();

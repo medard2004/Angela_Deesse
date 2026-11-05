@@ -229,6 +229,8 @@ void main() {
               amount: 50000,
               paidAt: clock.now(),
               receiptNumber: 101,
+              orderPriceAtPayment: 80000,
+              balanceAfter: 30000,
               createdAt: clock.now(),
               updatedAt: clock.now(),
             ),
@@ -279,6 +281,8 @@ void main() {
               amount: 10000,
               paidAt: clock.now(),
               receiptNumber: 102,
+              orderPriceAtPayment: 15000,
+              balanceAfter: 5000,
               createdAt: clock.now(),
               updatedAt: clock.now(),
             ),
@@ -318,6 +322,47 @@ void main() {
       expect(fromSql.year, 2026);
       expect(fromSql.month, 11);
       expect(fromSql.day, 5);
+    });
+
+    test('7. orders.delivered_at : renseigné quand statut -> livree, remis à null en cas de retour', () async {
+      final oId = idGen.generate();
+      final order = Order(
+        id: oId,
+        clientId: 'c1',
+        title: 'Tunique Brocart',
+        price: 35000,
+        deliveryDate: DateTime.utc(2026, 11, 20),
+        status: OrderStatus.cours,
+        createdAt: clock.now(),
+      );
+      await orderRepo.save(order);
+
+      var fetched = await orderRepo.getById(oId);
+      expect(fetched!.deliveredAt, isNull);
+
+      // Passage à 'livree'
+      final deliveryTime = clock.now().add(const Duration(days: 2));
+      clock.currentTime = deliveryTime;
+      await orderRepo.save(fetched.copyWith(status: OrderStatus.livree));
+
+      fetched = await orderRepo.getById(oId);
+      expect(fetched!.status, OrderStatus.livree);
+      expect(fetched.deliveredAt, deliveryTime);
+
+      // Vérifier présence dans l'outbox
+      final outboxEntries = await (db.select(db.syncOutbox)
+            ..where((t) => t.entity.equals('orders') & t.entityId.equals(oId)))
+          .get();
+      expect(outboxEntries.isNotEmpty, isTrue);
+
+      // Retour de statut : de 'livree' à 'cours'
+      final returnTime = deliveryTime.add(const Duration(hours: 1));
+      clock.currentTime = returnTime;
+      await orderRepo.save(fetched.copyWith(status: OrderStatus.cours));
+
+      fetched = await orderRepo.getById(oId);
+      expect(fetched!.status, OrderStatus.cours);
+      expect(fetched.deliveredAt, isNull);
     });
   });
 }

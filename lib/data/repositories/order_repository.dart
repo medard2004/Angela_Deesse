@@ -71,6 +71,7 @@ class DriftOrderRepository implements OrderRepository {
         ),
         photos: photos,
         createdAt: e.order.createdAt,
+        deliveredAt: e.order.deliveredAt,
       );
     }).toList();
   }
@@ -190,6 +191,15 @@ class DriftOrderRepository implements OrderRepository {
     final normDelivery = normalizeDate(order.deliveryDate);
     final normFitting = order.fittingDate != null ? normalizeDateTime(order.fittingDate!) : null;
 
+    final DateTime? deliveredAt;
+    if (order.status == OrderStatus.livree) {
+      deliveredAt = (existing != null && existing.status == OrderStatus.livree.name && existing.deliveredAt != null)
+          ? existing.deliveredAt
+          : (order.deliveredAt ?? now);
+    } else {
+      deliveredAt = null;
+    }
+
     await db.transaction(() async {
       // 1. Sauvegarde de la commande principale
       await db.into(db.orders).insertOnConflictUpdate(
@@ -203,6 +213,7 @@ class DriftOrderRepository implements OrderRepository {
               deliveryDate: Value(normDelivery),
               fittingDate: Value(normFitting),
               status: Value(order.status.name),
+              deliveredAt: Value(deliveredAt),
               photoPath: Value(order.photos.firstOrNull),
               photoUploadState: const Value('none'),
               createdAt: Value(createdAt),
@@ -321,6 +332,7 @@ class DriftOrderRepository implements OrderRepository {
     final updatedAt = now;
     final normDelivery = normalizeDate(order.deliveryDate);
     final normFitting = order.fittingDate != null ? normalizeDateTime(order.fittingDate!) : null;
+    final deliveredAt = order.status == OrderStatus.livree ? now : null;
 
     await db.transaction(() async {
       // 1. Commande
@@ -335,6 +347,7 @@ class DriftOrderRepository implements OrderRepository {
               deliveryDate: normDelivery,
               fittingDate: Value(normFitting),
               status: Value(order.status.name),
+              deliveredAt: Value(deliveredAt),
               photoPath: Value(order.photos.firstOrNull),
               photoUploadState: const Value('none'),
               createdAt: createdAt,
@@ -379,9 +392,11 @@ class DriftOrderRepository implements OrderRepository {
             );
       }
 
-      // 3. Versement (avec numéro de reçu séquentiel atomique)
+      // 3. Versement (avec numéro de reçu séquentiel atomique et valeurs figées)
       final receiptNo = await db.nextReceiptNumber(counterName: 'clients');
       final paymentId = idGenerator.generate();
+      final orderPriceAtPayment = order.price;
+      final balanceAfter = order.price - depositAmount;
 
       await db.into(db.clientPayments).insert(
             db_layer.ClientPaymentsCompanion.insert(
@@ -390,6 +405,8 @@ class DriftOrderRepository implements OrderRepository {
               amount: depositAmount,
               paidAt: now,
               receiptNumber: receiptNo,
+              orderPriceAtPayment: orderPriceAtPayment,
+              balanceAfter: balanceAfter,
               note: Value(depositNote),
               createdAt: createdAt,
               updatedAt: updatedAt,

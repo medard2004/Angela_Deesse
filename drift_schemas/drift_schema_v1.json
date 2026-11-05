@@ -502,6 +502,20 @@
             "dsl_features": []
           },
           {
+            "name": "delivered_at",
+            "getter_name": "deliveredAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
             "name": "photo_path",
             "getter_name": "photoPath",
             "moor_type": "string",
@@ -812,6 +826,26 @@
             "dsl_features": []
           },
           {
+            "name": "order_price_at_payment",
+            "getter_name": "orderPriceAtPayment",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "balance_after",
+            "getter_name": "balanceAfter",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
             "name": "voided_at",
             "getter_name": "voidedAt",
             "moor_type": "int",
@@ -881,7 +915,8 @@
         "is_virtual": false,
         "without_rowid": false,
         "constraints": [
-          "CHECK (amount > 0)"
+          "CHECK (amount > 0)",
+          "CHECK (balance_after >= 0)"
         ],
         "explicit_pk": [
           "id"
@@ -1118,6 +1153,26 @@
             "dsl_features": []
           },
           {
+            "name": "total_fee_at_payment",
+            "getter_name": "totalFeeAtPayment",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "balance_after",
+            "getter_name": "balanceAfter",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
             "name": "voided_at",
             "getter_name": "voidedAt",
             "moor_type": "int",
@@ -1187,7 +1242,8 @@
         "is_virtual": false,
         "without_rowid": false,
         "constraints": [
-          "CHECK (amount > 0)"
+          "CHECK (amount > 0)",
+          "CHECK (balance_after >= 0)"
         ],
         "explicit_pk": [
           "id"
@@ -1883,6 +1939,25 @@
       "type": "index",
       "data": {
         "on": 3,
+        "name": "idx_orders_delivered_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "delivered_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
         "name": "idx_orders_deleted_at",
         "sql": null,
         "unique": false,
@@ -1895,7 +1970,7 @@
       }
     },
     {
-      "id": 28,
+      "id": 29,
       "references": [
         3
       ],
@@ -1914,7 +1989,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 30,
       "references": [
         4
       ],
@@ -1933,7 +2008,7 @@
       }
     },
     {
-      "id": 30,
+      "id": 31,
       "references": [
         4
       ],
@@ -1952,7 +2027,7 @@
       }
     },
     {
-      "id": 31,
+      "id": 32,
       "references": [
         4
       ],
@@ -1971,7 +2046,7 @@
       }
     },
     {
-      "id": 32,
+      "id": 33,
       "references": [
         5
       ],
@@ -1990,7 +2065,7 @@
       }
     },
     {
-      "id": 33,
+      "id": 34,
       "references": [
         5
       ],
@@ -2009,7 +2084,7 @@
       }
     },
     {
-      "id": 34,
+      "id": 35,
       "references": [
         5
       ],
@@ -2028,7 +2103,7 @@
       }
     },
     {
-      "id": 35,
+      "id": 36,
       "references": [
         5
       ],
@@ -2047,7 +2122,7 @@
       }
     },
     {
-      "id": 36,
+      "id": 37,
       "references": [
         5
       ],
@@ -2066,7 +2141,7 @@
       }
     },
     {
-      "id": 37,
+      "id": 38,
       "references": [
         5
       ],
@@ -2085,7 +2160,7 @@
       }
     },
     {
-      "id": 38,
+      "id": 39,
       "references": [
         6
       ],
@@ -2104,7 +2179,7 @@
       }
     },
     {
-      "id": 39,
+      "id": 40,
       "references": [
         6
       ],
@@ -2123,7 +2198,7 @@
       }
     },
     {
-      "id": 40,
+      "id": 41,
       "references": [
         6
       ],
@@ -2142,7 +2217,7 @@
       }
     },
     {
-      "id": 41,
+      "id": 42,
       "references": [
         6
       ],
@@ -2161,7 +2236,7 @@
       }
     },
     {
-      "id": 42,
+      "id": 43,
       "references": [
         7
       ],
@@ -2180,7 +2255,7 @@
       }
     },
     {
-      "id": 43,
+      "id": 44,
       "references": [
         7
       ],
@@ -2199,7 +2274,7 @@
       }
     },
     {
-      "id": 44,
+      "id": 45,
       "references": [
         7
       ],
@@ -2218,7 +2293,7 @@
       }
     },
     {
-      "id": 45,
+      "id": 46,
       "references": [
         7
       ],
@@ -2237,7 +2312,7 @@
       }
     },
     {
-      "id": 46,
+      "id": 47,
       "references": [
         7
       ],
@@ -2256,7 +2331,7 @@
       }
     },
     {
-      "id": 47,
+      "id": 48,
       "references": [
         7
       ],
@@ -2275,7 +2350,7 @@
       }
     },
     {
-      "id": 48,
+      "id": 49,
       "references": [
         8
       ],
@@ -2294,7 +2369,7 @@
       }
     },
     {
-      "id": 49,
+      "id": 50,
       "references": [
         8
       ],
@@ -2313,7 +2388,7 @@
       }
     },
     {
-      "id": 50,
+      "id": 51,
       "references": [
         8
       ],
@@ -2332,7 +2407,7 @@
       }
     },
     {
-      "id": 51,
+      "id": 52,
       "references": [
         8
       ],
@@ -2351,7 +2426,7 @@
       }
     },
     {
-      "id": 52,
+      "id": 53,
       "references": [
         9
       ],
@@ -2370,7 +2445,7 @@
       }
     },
     {
-      "id": 53,
+      "id": 54,
       "references": [
         9
       ],
@@ -2389,7 +2464,7 @@
       }
     },
     {
-      "id": 54,
+      "id": 55,
       "references": [
         11
       ],
@@ -2408,7 +2483,7 @@
       }
     },
     {
-      "id": 55,
+      "id": 56,
       "references": [
         11
       ],
@@ -2464,7 +2539,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"orders\" (\"id\" TEXT NOT NULL, \"client_id\" TEXT NOT NULL REFERENCES clients (id), \"modele_id\" TEXT NULL REFERENCES modeles (id), \"title\" TEXT NOT NULL, \"fabric\" TEXT NOT NULL DEFAULT '', \"price\" INTEGER NOT NULL, \"delivery_date\" INTEGER NOT NULL, \"fitting_date\" INTEGER NULL, \"status\" TEXT NOT NULL DEFAULT 'attente', \"photo_path\" TEXT NULL, \"photo_hash\" TEXT NULL, \"photo_upload_state\" TEXT NOT NULL DEFAULT 'none', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (price >= 0));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"orders\" (\"id\" TEXT NOT NULL, \"client_id\" TEXT NOT NULL REFERENCES clients (id), \"modele_id\" TEXT NULL REFERENCES modeles (id), \"title\" TEXT NOT NULL, \"fabric\" TEXT NOT NULL DEFAULT '', \"price\" INTEGER NOT NULL, \"delivery_date\" INTEGER NOT NULL, \"fitting_date\" INTEGER NULL, \"status\" TEXT NOT NULL DEFAULT 'attente', \"delivered_at\" INTEGER NULL, \"photo_path\" TEXT NULL, \"photo_hash\" TEXT NULL, \"photo_upload_state\" TEXT NOT NULL DEFAULT 'none', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (price >= 0));"
         }
       ]
     },
@@ -2482,7 +2557,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"client_payments\" (\"id\" TEXT NOT NULL, \"order_id\" TEXT NOT NULL REFERENCES orders (id), \"amount\" INTEGER NOT NULL, \"paid_at\" INTEGER NOT NULL, \"note\" TEXT NOT NULL DEFAULT '', \"receipt_number\" INTEGER NOT NULL, \"voided_at\" INTEGER NULL, \"void_reason\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (amount > 0));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"client_payments\" (\"id\" TEXT NOT NULL, \"order_id\" TEXT NOT NULL REFERENCES orders (id), \"amount\" INTEGER NOT NULL, \"paid_at\" INTEGER NOT NULL, \"note\" TEXT NOT NULL DEFAULT '', \"receipt_number\" INTEGER NOT NULL, \"order_price_at_payment\" INTEGER NOT NULL, \"balance_after\" INTEGER NOT NULL, \"voided_at\" INTEGER NULL, \"void_reason\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (amount > 0), CHECK (balance_after >= 0));"
         }
       ]
     },
@@ -2500,7 +2575,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"apprentice_payments\" (\"id\" TEXT NOT NULL, \"apprentice_id\" TEXT NOT NULL REFERENCES apprentices (id), \"amount\" INTEGER NOT NULL, \"paid_at\" INTEGER NOT NULL, \"note\" TEXT NOT NULL DEFAULT '', \"receipt_number\" INTEGER NOT NULL, \"voided_at\" INTEGER NULL, \"void_reason\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (amount > 0));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"apprentice_payments\" (\"id\" TEXT NOT NULL, \"apprentice_id\" TEXT NOT NULL REFERENCES apprentices (id), \"amount\" INTEGER NOT NULL, \"paid_at\" INTEGER NOT NULL, \"note\" TEXT NOT NULL DEFAULT '', \"receipt_number\" INTEGER NOT NULL, \"total_fee_at_payment\" INTEGER NOT NULL, \"balance_after\" INTEGER NOT NULL, \"voided_at\" INTEGER NULL, \"void_reason\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (amount > 0), CHECK (balance_after >= 0));"
         }
       ]
     },
@@ -2672,6 +2747,15 @@
         {
           "dialect": "sqlite",
           "sql": "CREATE INDEX idx_orders_status ON orders (status)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_delivered_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_delivered_at ON orders (delivered_at)"
         }
       ]
     },

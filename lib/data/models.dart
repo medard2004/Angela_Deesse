@@ -63,27 +63,30 @@ class Order {
   Order({
     required this.id, required this.clientId, this.modeleId, required this.title, this.fabric = '',
     required this.price, required this.deliveryDate, this.fittingDate, this.status = OrderStatus.attente,
-    this.photos = const [], required this.createdAt,
+    this.deliveredAt, this.photos = const [], required this.createdAt,
   });
   final String id, clientId, title, fabric;
   final String? modeleId;
   final int price;
   final DateTime deliveryDate, createdAt;
-  final DateTime? fittingDate;
+  final DateTime? fittingDate, deliveredAt;
   final OrderStatus status;
   final List<String> photos;
   bool get isActive => status != OrderStatus.livree;
 
-  Order copyWith({OrderStatus? status}) => Order(
-        id: id, clientId: clientId, modeleId: modeleId, title: title, fabric: fabric, price: price,
-        deliveryDate: deliveryDate, fittingDate: fittingDate, status: status ?? this.status,
+  Order copyWith({OrderStatus? status, DateTime? deliveredAt, int? price, String? title, String? fabric, DateTime? deliveryDate, DateTime? fittingDate}) => Order(
+        id: id, clientId: clientId, modeleId: modeleId, title: title ?? this.title, fabric: fabric ?? this.fabric, price: price ?? this.price,
+        deliveryDate: deliveryDate ?? this.deliveryDate, fittingDate: fittingDate ?? this.fittingDate, status: status ?? this.status,
+        deliveredAt: deliveredAt ?? this.deliveredAt,
         photos: photos, createdAt: createdAt,
       );
 
   Map<String, Object?> toMap() => {
         'id': id, 'client_id': clientId, 'modele_id': modeleId, 'title': title, 'fabric': fabric,
         'price': price, 'delivery_date': deliveryDate.millisecondsSinceEpoch,
-        'fitting_date': fittingDate?.millisecondsSinceEpoch, 'status': status.name,
+        'fitting_date': fittingDate?.millisecondsSinceEpoch,
+        'delivered_at': deliveredAt?.millisecondsSinceEpoch,
+        'status': status.name,
         'photos': jsonEncode(photos), 'created_at': createdAt.millisecondsSinceEpoch,
       };
   factory Order.fromMap(Map<String, Object?> m) => Order(
@@ -95,6 +98,7 @@ class Order {
         price: _i(m['price']),
         deliveryDate: _d(m['delivery_date']),
         fittingDate: _dn(m['fitting_date']),
+        deliveredAt: _dn(m['delivered_at']),
         status: OrderStatus.values.firstWhere((e) => e.name == m['status'], orElse: () => OrderStatus.attente),
         photos: (jsonDecode(_s(m['photos']).isEmpty ? '[]' : m['photos'] as String) as List).cast<String>(),
         createdAt: _d(m['created_at']),
@@ -109,6 +113,8 @@ class ClientPayment {
     required this.paidAt,
     this.note = '',
     this.receiptNumber = 0,
+    this.orderPriceAtPayment = 0,
+    this.balanceAfter = 0,
     this.voidedAt,
     this.voidReason,
     DateTime? createdAt,
@@ -120,6 +126,8 @@ class ClientPayment {
   final int amount;
   final DateTime paidAt;
   final int receiptNumber;
+  final int orderPriceAtPayment;
+  final int balanceAfter;
   final DateTime? voidedAt;
   final String? voidReason;
   final DateTime createdAt;
@@ -134,6 +142,8 @@ class ClientPayment {
         'paid_at': paidAt.millisecondsSinceEpoch,
         'note': note,
         'receipt_number': receiptNumber,
+        'order_price_at_payment': orderPriceAtPayment,
+        'balance_after': balanceAfter,
         'voided_at': voidedAt?.millisecondsSinceEpoch,
         'void_reason': voidReason,
         'created_at': createdAt.millisecondsSinceEpoch,
@@ -147,6 +157,8 @@ class ClientPayment {
         paidAt: _d(m['paid_at']),
         note: _s(m['note']),
         receiptNumber: _i(m['receipt_number']),
+        orderPriceAtPayment: _i(m['order_price_at_payment']),
+        balanceAfter: _i(m['balance_after']),
         voidedAt: _dn(m['voided_at']),
         voidReason: m['void_reason'] as String?,
         createdAt: m['created_at'] != null ? _d(m['created_at']) : null,

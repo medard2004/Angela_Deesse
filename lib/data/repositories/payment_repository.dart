@@ -43,6 +43,8 @@ class DriftPaymentRepository implements PaymentRepository {
       paidAt: row.paidAt,
       note: row.note,
       receiptNumber: row.receiptNumber,
+      orderPriceAtPayment: row.orderPriceAtPayment,
+      balanceAfter: row.balanceAfter,
       voidedAt: row.voidedAt,
       voidReason: row.voidReason,
       createdAt: row.createdAt,
@@ -137,12 +139,17 @@ class DriftPaymentRepository implements PaymentRepository {
 
     return await db.transaction(() async {
       final receiptNo = await db.nextReceiptNumber(counterName: 'clients');
+      final orderPriceAtPayment = order.price;
+      final balanceAfter = remaining - amount;
+
       final companion = db_layer.ClientPaymentsCompanion.insert(
         id: paymentId,
         orderId: orderId,
         amount: amount,
         paidAt: pDate,
         receiptNumber: receiptNo,
+        orderPriceAtPayment: orderPriceAtPayment,
+        balanceAfter: balanceAfter,
         note: Value(note),
         createdAt: now,
         updatedAt: now,
@@ -166,6 +173,8 @@ class DriftPaymentRepository implements PaymentRepository {
         amount: amount,
         paidAt: pDate,
         receiptNumber: receiptNo,
+        orderPriceAtPayment: orderPriceAtPayment,
+        balanceAfter: balanceAfter,
         note: note,
         createdAt: now,
         updatedAt: now,

@@ -173,13 +173,19 @@ Côté serveur (Laravel) :
   - Refus d'un versement dont le montant dépasse le reliquat restant.
   - Annulation (`voidClientPayment`) : pose `voided_at`, `void_reason`, `updated_at`, outbox `upsert`. Double annulation strictement rejetée. Jamais de suppression physique (`DELETE`) ni de modification de montant ou de date.
   - Versement annulé affiché en atténué avec mention « Annulé (motif) » dans l'historique.
-- **Numéros de reçus & Affichage** :
+- **Numéros de reçus & Affichage (Reçu = photographie immuable)** :
   - Numéro stocké sous forme d'entier séquentiel unique dans `receipt_number`.
   - Format d'affichage : préfixe distinctif `CMD-0001` pour les clients (différencié du format `0001` des apprentis).
-  - Reçu en photographie du moment : solde affiché = `prix - somme(versements actifs dont receipt_number <= reçu.receipt_number)`.
-  - Tampon de reçu : « ANNULÉ » en rouge (`Pal.thread`) si le versement est annulé ; « SOLDÉ » ou « PAYÉ » sinon.
-- **Dates jour-seul & fuseaux horaires** :
-  - Les dates jour-seul (`deliveryDate`) sont normalisées en UTC calendaire (`DateTime.utc(year, month, day)`) garantissant un aller-retour exact sans décalage quel que soit le fuseau horaire (`Africa/Lagos` UTC+1, `America/New_York` UTC-5).
+  - Valeurs figées et immuables écrites dans la même transaction que le versement : `order_price_at_payment` et `balance_after` (`CHECK (balance_after >= 0)`).
+  - Reçu en photographie immuable : `ReceiptScreen` affiche directement ces valeurs stockées. Annuler un versement plus ancien ou modifier le prix après coup ne modifie aucun reçu émis.
+  - Tampon de reçu : « ANNULÉ » en rouge (`Pal.thread`) si le versement est annulé ; « SOLDÉ » si `balance_after == 0`, « VERSÉ » si `balance_after > 0` (aucun tampon « PAYÉ »).
+  - Le reliquat courant de la commande reste dynamique (`prix - somme(versements actifs)`).
+- **Statut de livraison & `delivered_at`** :
+  - `orders.delivered_at` (instant UTC millisecondes nullable) : renseigné lors du passage au statut `'livree'`, remis à null en cas de retour à un statut antérieur, écrit dans la même transaction avec outbox.
+- **Dates jour-seul vs instants & fuseaux horaires** :
+  - Conventions documentées dans `docs/schema-drift.md` :
+    - « instant » : point précis dans le temps UTC (`created_at`, `updated_at`, `deleted_at`, `paid_at`, `voided_at`, `delivered_at`, `taken_at`).
+    - « jour calendaire (UTC minuit) » : date sans heure (`delivery_date`, `fitting_date`, `start_date`, `next_due`), normalisée en UTC calendaire (`DateTime.utc(year, month, day)`) garantissant un aller-retour exact sans décalage quel que soit le fuseau horaire (`Africa/Lagos` UTC+1, `America/New_York` UTC-5).
   - Les calculs de tableau de bord (délais, retards) restent en Dart avec bornes en heure locale.
 - **DemoSeeder** :
   - Commandes + photos + versements démo insérés ensemble sous la clé `'demo_seeded:orders'` en debug uniquement, sans écriture dans `sync_outbox`.

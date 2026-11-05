@@ -176,6 +176,8 @@ void main() {
               amount: 25000,
               paidAt: clock.now(),
               receiptNumber: 42,
+              orderPriceAtPayment: 80000,
+              balanceAfter: 55000,
               createdAt: clock.now(),
               updatedAt: clock.now(),
             ),
@@ -252,6 +254,8 @@ void main() {
       // Versement 1 : 30 000 FCFA -> reliquat = 20 000 FCFA
       final p1 = await paymentRepo.addPayment(orderId: 'o_rest', amount: 30000, note: 'V1');
       expect(p1.receiptNumber, 1);
+      expect(p1.orderPriceAtPayment, 50000);
+      expect(p1.balanceAfter, 20000);
 
       // Versement de 25 000 FCFA refusé car 25 000 > 20 000
       expect(
@@ -262,21 +266,103 @@ void main() {
       // Versement 2 valide : 20 000 FCFA
       final p2 = await paymentRepo.addPayment(orderId: 'o_rest', amount: 20000, note: 'Solde');
       expect(p2.receiptNumber, 2);
+      expect(p2.orderPriceAtPayment, 50000);
+      expect(p2.balanceAfter, 0);
 
-      // Solde de l'ancien reçu (photographie au moment du versement 1)
-      final allPayments = await paymentRepo.getByOrderId('o_rest');
-      final activePaymentsAtP1 = allPayments
-          .where((p) => !p.isVoided && p.receiptNumber <= p1.receiptNumber)
-          .fold<int>(0, (sum, p) => sum + p.amount);
-      final remainingAtP1 = order.price - activePaymentsAtP1;
-      expect(remainingAtP1, 20000, reason: 'Le solde calculé au moment du premier reçu ne doit pas changer');
+      // Vérification des valeurs figées immuables
+      expect(p1.orderPriceAtPayment, 50000);
+      expect(p1.balanceAfter, 20000);
+      expect(p2.orderPriceAtPayment, 50000);
+      expect(p2.balanceAfter, 0);
+    });
 
-      // Solde au moment du versement 2
-      final activePaymentsAtP2 = allPayments
-          .where((p) => !p.isVoided && p.receiptNumber <= p2.receiptNumber)
-          .fold<int>(0, (sum, p) => sum + p.amount);
-      final remainingAtP2 = order.price - activePaymentsAtP2;
-      expect(remainingAtP2, 0);
+    test('5b. Reçu immuable : annuler un versement ancien ne change pas les reçus suivants', () async {
+      final order = Order(
+        id: 'o_immut',
+        clientId: 'c_test',
+        title: 'Robe Immuable',
+        price: 100000,
+        deliveryDate: DateTime.utc(2026, 12, 10),
+        createdAt: clock.now(),
+      );
+      await orderRepo.save(order);
+
+      final p1 = await paymentRepo.addPayment(orderId: 'o_immut', amount: 40000, note: 'Acompte 1');
+      expect(p1.orderPriceAtPayment, 100000);
+      expect(p1.balanceAfter, 60000);
+
+      final p2 = await paymentRepo.addPayment(orderId: 'o_immut', amount: 30000, note: 'Acompte 2');
+      expect(p2.orderPriceAtPayment, 100000);
+      expect(p2.balanceAfter, 30000);
+
+      // Annuler p1 (le plus ancien)
+      await paymentRepo.voidPayment(id: p1.id, reason: 'Erreur');
+
+      // Relire p2 : ses valeurs figées n'ont pas bougé
+      final reloadedP2 = (await paymentRepo.getByOrderId('o_immut')).firstWhere((p) => p.id == p2.id);
+      expect(reloadedP2.orderPriceAtPayment, 100000);
+      expect(reloadedP2.balanceAfter, 30000);
+      expect(reloadedP2.receiptNumber, p2.receiptNumber);
+    });
+
+    test('5c. Reçu immuable : changer le prix de la commande après coup ne change aucun reçu existant', () async {
+      final order = Order(
+        id: 'o_price_change',
+        clientId: 'c_test',
+        title: 'Costume Évolutif',
+        price: 80000,
+        deliveryDate: DateTime.utc(2026, 12, 10),
+        createdAt: clock.now(),
+      );
+      await orderRepo.save(order);
+
+      final p1 = await paymentRepo.addPayment(orderId: 'o_price_change', amount: 30000, note: 'Acompte');
+      expect(p1.orderPriceAtPayment, 80000);
+      expect(p1.balanceAfter, 50000);
+
+      // Modifier le prix de la commande à 120 000 FCFA
+      await orderRepo.save(order.copyWith(price: 120000));
+
+      // Relire le versement : orderPriceAtPayment et balanceAfter restent inchangés
+      final reloadedP1 = (await paymentRepo.getByOrderId('o_price_change')).firstWhere((p) => p.id == p1.id);
+      expect(reloadedP1.orderPriceAtPayment, 80000);
+      expect(reloadedP1.balanceAfter, 50000);
+
+      // Un nouveau versement p2 est calculé sur le nouveau prix (120 000 - 30 000 = 90 000 restant)
+      final p2 = await paymentRepo.addPayment(orderId: 'o_price_change', amount: 40000, note: 'V2');
+      expect(p2.orderPriceAtPayment, 120000);
+      expect(p2.balanceAfter, 50000); // 90 000 - 40 000 = 50 000
+    });
+
+    test('5d. Atomicité du versement : si le versement échoue, rien n est écrit (pas de trou de reçu, pas d outbox)', () async {
+      final counterBefore = await (db.select(db.receiptCounters)..where((t) => t.counterName.equals('clients'))).getSingleOrNull();
+      final lastValBefore = counterBefore?.lastValue ?? 0;
+      final outboxCountBefore = (await db.select(db.syncOutbox).get()).length;
+
+      // Versement dépassant le reste dû (commande à 10 000, montant à 20 000)
+      final smallOrder = Order(
+        id: 'o_small',
+        clientId: 'c_test',
+        title: 'Petit article',
+        price: 10000,
+        deliveryDate: DateTime.utc(2026, 12, 10),
+        createdAt: clock.now(),
+      );
+      await orderRepo.save(smallOrder);
+
+      expect(
+        () => paymentRepo.addPayment(orderId: 'o_small', amount: 20000, note: 'Trop élevé'),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      final counterAfter = await (db.select(db.receiptCounters)..where((t) => t.counterName.equals('clients'))).getSingleOrNull();
+      expect(counterAfter?.lastValue ?? 0, lastValBefore);
+
+      final outboxCountAfter = (await db.select(db.syncOutbox).get()).length;
+      expect(outboxCountAfter, outboxCountBefore + 1); // Only 1 upsert for order creation, 0 for failed payment
+
+      final paymentsForSmall = await paymentRepo.getByOrderId('o_small');
+      expect(paymentsForSmall, isEmpty);
     });
 
     test('6. Contrainte de clé étrangère : versement sur commande inexistante refusé', () async {

@@ -9,8 +9,11 @@ Ce document décrit le schéma complet de la base de données locale sous Drift 
 ## 1. Principes d'architecture & Décisions validées
 
 1. **Identifiants** : Clés primaires en texte sous forme d'**UUIDv7**, générés côté client de manière synchrone et testable via l'interface `IdGenerator` (`UuidV7IdGenerator`). Aucun `AUTOINCREMENT` SQLite n'est utilisé.
-2. **Horodatages & Millisecondes** : 
-   - Toutes les colonnes temporelles (`created_at`, `updated_at`, `deleted_at`, `paid_at`, etc.) sont stockées sous forme d'**entiers SQLite (`INTEGER`) en millisecondes UTC depuis l'époque Unix** via un `TypeConverter` dédié (`DateTimeConverter` et `NullableDateTimeConverter`).
+2. **Horodatages, Dates & Conventions temporelles** : 
+   - Toutes les colonnes temporelles sont stockées sous forme d'**entiers SQLite (`INTEGER`) en millisecondes UTC depuis l'époque Unix** via un `TypeConverter` dédié (`DateTimeConverter` et `NullableDateTimeConverter`).
+   - Deux conventions sémantiques strictes régissent les dates :
+     - **« instant »** : moment précis dans le temps (UTC epoch ms), utilisé pour les horodatages techniques et événements réels (`created_at`, `updated_at`, `deleted_at`, `paid_at`, `voided_at`, `delivered_at`, `taken_at`).
+     - **« jour calendaire (UTC minuit) »** : date sans composante horaire liée au calendrier civil (`delivery_date`, `fitting_date`, `start_date`, `next_due`), systématiquement normalisée à `DateTime.utc(year, month, day, 0, 0, 0)`. Cela garantit un aller-retour exact et invariant quel que soit le fuseau horaire de l'appareil (`Africa/Lagos` UTC+1, `America/New_York` UTC-5). Les calculs d'échéances et de retards (tableau de bord) s'effectuent côté Dart avec les bornes locales de l'utilisateur.
    - *Comportement Drift par défaut* : Drift stocke par défaut les `DateTime` en secondes Unix tronquées (`~/ 1000`). L'utilisation systématique de nos convertisseurs garantit la préservation exacte des millisecondes requises pour les résolutions de conflits et tris de synchronisation.
 3. **Suppression logique & Règle d'or Outbox** :
    - Toutes les entités synchronisables portent `deleted_at` (nullable).
@@ -27,7 +30,9 @@ Ce document décrit le schéma complet de la base de données locale sous Drift 
    - Les photos multiples d'une commande sont stockées dans la table dédiée `order_photos` pour gérer individuellement l'état d'upload et le positionnement de chaque cliché.
 7. **Contraintes CHECK** :
    - `client_payments.amount > 0`
+   - `client_payments.balance_after >= 0`
    - `apprentice_payments.amount > 0`
+   - `apprentice_payments.balance_after >= 0`
    - `orders.price >= 0`
    - `apprentices.total_fee >= 0`
 8. **Atomicité Outbox** : La méthode utilitaire `AppDatabase.writeWithOutbox` encapsule la modification métier et l'insertion dans `sync_outbox` dans une transaction SQLite unique (rollback intégral en cas d'échec).
@@ -46,9 +51,9 @@ Table des clients de l'atelier.
 | `name` | `TEXT` | `String` | Non | - | Nom complet du client |
 | `phone` | `TEXT` | `String` | Non | Défaut `''` | Téléphone |
 | `notes` | `TEXT` | `String` | Non | Défaut `''` | Remarques / notes |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
 - **Index** :
@@ -65,12 +70,12 @@ Fiches de mesures prises pour un client.
 |---|---|---|---|---|---|
 | `id` | `TEXT` | `String` | Non | Clé primaire (UUIDv7) | Identifiant unique |
 | `client_id` | `TEXT` | `String` | Non | FK `clients(id)` | Référence du client |
-| `taken_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de prise de mesure |
+| `taken_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de prise de mesure |
 | `measures` | `TEXT` | `Map<String, double>` | Non | JSON String | Valeurs des mensurations (cm) |
 | `note` | `TEXT` | `String` | Non | Défaut `''` | Note facultative |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
 - **Clé étrangère** : `client_id` -> `clients(id)`
@@ -93,9 +98,9 @@ Modèles du catalogue de l'atelier.
 | `photo_path` | `TEXT` | `String?` | Oui | - | Chemin d'image (ex. `demo:1`) |
 | `photo_hash` | `TEXT` | `String?` | Oui | - | Hash SHA256 de la photo |
 | `photo_upload_state` | `TEXT` | `String` | Non | Défaut `'none'` | État upload photo |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
 - **Index** :
@@ -116,15 +121,16 @@ Commandes de confections passées par les clients.
 | `title` | `TEXT` | `String` | Non | - | Intitulé de la commande |
 | `fabric` | `TEXT` | `String` | Non | Défaut `''` | Tissu fourni/décrit |
 | `price` | `INTEGER` | `int` | Non | `CHECK (price >= 0)` | Prix total convenu (FCFA) |
-| `delivery_date` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date limite de livraison |
-| `fitting_date` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date d'essayage (nom exact SQLite `fitting_date`) |
+| `delivery_date` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | jour calendaire (UTC minuit) — Date limite de livraison |
+| `fitting_date` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | jour calendaire (UTC minuit) — Date d'essayage |
 | `status` | `TEXT` | `String` | Non | Défaut `'attente'` | `attente`, `cours`, `prete`, `livree` |
+| `delivered_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date réelle de livraison (statut 'livree') |
 | `photo_path` | `TEXT` | `String?` | Oui | - | Photo principale |
 | `photo_hash` | `TEXT` | `String?` | Oui | - | Hash SHA256 |
 | `photo_upload_state` | `TEXT` | `String` | Non | Défaut `'none'` | État d'upload |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
 - **Contrainte CHECK** : `CHECK (price >= 0)`
@@ -136,6 +142,7 @@ Commandes de confections passées par les clients.
   - `idx_orders_modele_id` sur `(modele_id)`
   - `idx_orders_delivery_date` sur `(delivery_date)`
   - `idx_orders_status` sur `(status)`
+  - `idx_orders_delivered_at` sur `(delivered_at)`
   - `idx_orders_updated_at` sur `(updated_at)`
   - `idx_orders_deleted_at` sur `(deleted_at)`
 
@@ -152,9 +159,9 @@ Galerie de photos complémentaires associées à une commande.
 | `photo_hash` | `TEXT` | `String?` | Oui | - | Hash SHA256 |
 | `photo_upload_state` | `TEXT` | `String` | Non | Défaut `'none'` | `none`, `pending`, `uploaded`, `failed` |
 | `position` | `INTEGER` | `int` | Non | Défaut `0` | Ordre d'affichage |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
 - **Clé étrangère** : `order_id` -> `orders(id)`
@@ -173,17 +180,19 @@ Paiements / acomptes versés par les clients sur une commande.
 | `id` | `TEXT` | `String` | Non | Clé primaire (UUIDv7) | Identifiant unique |
 | `order_id` | `TEXT` | `String` | Non | FK `orders(id)` | Référence de la commande |
 | `amount` | `INTEGER` | `int` | Non | `CHECK (amount > 0)` | Montant versé (FCFA) |
-| `paid_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date du versement |
+| `paid_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date du versement |
 | `note` | `TEXT` | `String` | Non | Défaut `''` | Note / méthode de versement |
 | `receipt_number` | `INTEGER` | `int` | Non | **UNIQUE** | Numéro séquentiel de reçu |
-| `voided_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date d'annulation |
+| `order_price_at_payment` | `INTEGER` | `int` | Non | - | Prix de commande au moment du versement (immuable) |
+| `balance_after` | `INTEGER` | `int` | Non | `CHECK (balance_after >= 0)` | Solde restant après ce versement (immuable) |
+| `voided_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date d'annulation |
 | `void_reason` | `TEXT` | `String?` | Oui | - | Motif d'annulation |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
-- **Contrainte CHECK** : `CHECK (amount > 0)`
+- **Contrainte CHECK** : `CHECK (amount > 0)`, `CHECK (balance_after >= 0)`
 - **Clé étrangère** : `order_id` -> `orders(id)`
 - **Index** :
   - `idx_client_payments_receipt_number` **UNIQUE** sur `(receipt_number)`
@@ -203,13 +212,13 @@ Apprentis en formation au sein de l'atelier.
 | `id` | `TEXT` | `String` | Non | Clé primaire (UUIDv7) | Identifiant unique |
 | `name` | `TEXT` | `String` | Non | - | Nom de l'apprenti |
 | `phone` | `TEXT` | `String` | Non | Défaut `''` | Téléphone |
-| `start_date` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de début de formation |
+| `start_date` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | jour calendaire (UTC minuit) — Date de début de formation |
 | `total_fee` | `INTEGER` | `int` | Non | `CHECK (total_fee >= 0)` | Frais totaux convenus (FCFA) |
-| `next_due` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de prochaine échéance |
+| `next_due` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | jour calendaire (UTC minuit) — Date de prochaine échéance |
 | `notes` | `TEXT` | `String` | Non | Défaut `''` | Remarques |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
 - **Contrainte CHECK** : `CHECK (total_fee >= 0)`
@@ -229,17 +238,19 @@ Versements d'écolage effectués par un apprenti.
 | `id` | `TEXT` | `String` | Non | Clé primaire (UUIDv7) | Identifiant unique |
 | `apprentice_id` | `TEXT` | `String` | Non | FK `apprentices(id)` | Référence de l'apprenti |
 | `amount` | `INTEGER` | `int` | Non | `CHECK (amount > 0)` | Montant versé (FCFA) |
-| `paid_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date du versement |
+| `paid_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date du versement |
 | `note` | `TEXT` | `String` | Non | Défaut `''` | Note / motif |
 | `receipt_number` | `INTEGER` | `int` | Non | **UNIQUE** | Numéro séquentiel de reçu |
-| `voided_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date d'annulation |
+| `total_fee_at_payment` | `INTEGER` | `int` | Non | - | Frais de formation au moment du versement (immuable) |
+| `balance_after` | `INTEGER` | `int` | Non | `CHECK (balance_after >= 0)` | Solde restant après ce versement (immuable) |
+| `voided_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date d'annulation |
 | `void_reason` | `TEXT` | `String?` | Oui | - | Motif d'annulation |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
-- **Contrainte CHECK** : `CHECK (amount > 0)`
+- **Contrainte CHECK** : `CHECK (amount > 0)`, `CHECK (balance_after >= 0)`
 - **Clé étrangère** : `apprentice_id` -> `apprentices(id)`
 - **Index** :
   - `idx_apprentice_payments_receipt_number` **UNIQUE** sur `(receipt_number)`
@@ -263,9 +274,9 @@ Réalisations de la galerie (photos des tenues confectionnées).
 | `photo_path` | `TEXT` | `String` | Non | - | Chemin d'accès à l'image |
 | `photo_hash` | `TEXT` | `String?` | Oui | - | Hash SHA256 de l'image |
 | `photo_upload_state` | `TEXT` | `String` | Non | Défaut `'none'` | État d'upload |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
-| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | Date de suppression logique |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
+| `deleted_at` | `INTEGER` | `DateTime?` | Oui | Millisecondes UTC | instant — Date de suppression logique |
 
 - **Clé primaire** : `(id)`
 - **Clé étrangère** : `client_id` -> `clients(id)`
@@ -285,8 +296,8 @@ Paramètres applicatifs clés/valeurs synchronisables (nom de l'atelier, etc.).
 | `id` | `TEXT` | `String` | Non | Clé primaire (= `key`) | Identifiant (identique à `key`) |
 | `key` | `TEXT` | `String` | Non | **UNIQUE** | Nom du paramètre (ex. `atelier_name`) |
 | `value` | `TEXT` | `String` | Non | - | Valeur texte (ou JSON) |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de création |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de dernière mise à jour |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de création |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de dernière mise à jour |
 
 - **Clé primaire** : `(id)`
 - **Index** :
@@ -303,7 +314,7 @@ Compteurs séquentiels de numérotation des reçus (local uniquement, non synchr
 |---|---|---|---|---|---|
 | `counter_name` | `TEXT` | `String` | Non | Clé primaire | Nom du compteur (`clients`, `apprentices`) |
 | `last_value` | `INTEGER` | `int` | Non | Défaut `0` | Dernier numéro attribué |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Horodatage de l'incrémentation |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Horodatage de l'incrémentation |
 
 - **Clé primaire** : `(counter_name)`
 
@@ -318,7 +329,7 @@ File d'attente locale des modifications à pousser vers le serveur de synchronis
 | `entity` | `TEXT` | `String` | Non | - | Nom de la table cible (ex. `clients`) |
 | `entity_id` | `TEXT` | `String` | Non | - | Identifiant de la ligne modifiée |
 | `op` | `TEXT` | `String` | Non | - | Opération : `'upsert'` ou `'delete'` |
-| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Date de mise en file d'attente |
+| `created_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Date de mise en file d'attente |
 | `attempts` | `INTEGER` | `int` | Non | Défaut `0` | Nombre de tentatives d'envoi |
 | `last_error` | `TEXT` | `String?` | Oui | - | Message d'erreur de la dernière tentative |
 
@@ -338,7 +349,7 @@ Table d'état technique local (non synchronisée avec le serveur).
 |---|---|---|---|---|---|
 | `key` | `TEXT` | `String` | Non | Clé primaire | Clé d'état (ex: `pull_cursor`, `demo_seeded`) |
 | `value` | `TEXT` | `String` | Non | - | Valeur stockée |
-| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | Horodatage de mise à jour |
+| `updated_at` | `INTEGER` | `DateTime` | Non | Millisecondes UTC | instant — Horodatage de mise à jour |
 
 - **Clé primaire** : `(key)`
 
