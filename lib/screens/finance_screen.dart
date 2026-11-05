@@ -10,7 +10,7 @@ class FinanceScreen extends StatelessWidget {
     final s = context.watch<AppStore>();
     final now = DateTime.now();
     bool thisMonth(DateTime d) => d.year == now.year && d.month == now.month;
-    final int monthTotal = s.clientPayments.where((p) => thisMonth(p.paidAt)).fold<int>(0, (t, p) => t + p.amount) +
+    final int monthTotal = s.clientPayments.where((p) => !p.isVoided && thisMonth(p.paidAt)).fold<int>(0, (t, p) => t + p.amount) +
         s.apprenticePayments.where((p) => thisMonth(p.paidAt)).fold<int>(0, (t, p) => t + p.amount);
 
     // Maquette : l'historique des mois précédents est fictif.
@@ -19,7 +19,7 @@ class FinanceScreen extends StatelessWidget {
     final months = [for (var i = 5; i >= 0; i--) DateFormat('MMM', 'fr_FR').format(DateTime(now.year, now.month - i))];
 
     final moves = <({String who, String sub, int amount, DateTime date, bool apprentice})>[
-      for (final p in s.clientPayments)
+      for (final p in s.clientPayments.where((p) => !p.isVoided))
         (
           who: s.clientById(s.orderById(p.orderId)?.clientId)?.name ?? 'Client',
           sub: s.orderById(p.orderId)?.title ?? 'Commande',

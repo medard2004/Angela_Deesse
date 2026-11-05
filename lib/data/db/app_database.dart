@@ -164,6 +164,8 @@ class AppDatabase extends _$AppDatabase {
     return row.read(clientPayments.amount.sum()) ?? 0;
   }
 
+  Future<int> getTotalActivePaymentsForOrder(String orderId) => activePaymentsTotalForOrder(orderId);
+
   /// Calcule la somme des versements actifs pour un apprenti en excluant
   /// les versements annulés (voided_at != null) et supprimés logiquement (deleted_at != null).
   Future<int> activePaymentsTotalForApprentice(String apprenticeId) async {

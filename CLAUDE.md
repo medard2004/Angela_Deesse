@@ -158,3 +158,30 @@ Côté serveur (Laravel) :
 - **Photos** : convention `demo:N` préservée dans `photo_path`, `photo_hash = null`, `photo_upload_state = 'none'`.
 - **DemoSeeder par entité & migration** : remplacement de la clé unique `'demo_seeded'` par trois clés distinctes (`'demo_seeded:clients'`, `'demo_seeded:modeles'`, `'demo_seeded:realisations'`). Si l'ancienne clé `'demo_seeded'` = '1' est détectée, elle est automatiquement convertie en `'demo_seeded:clients'` sans réinsérer les clients existants. Zéro écriture dans `sync_outbox`.
 - **Tri et filtrage** : tri des modèles et filtre des réalisations insensibles à la casse et aux accents (`compareCaseAndAccentInsensitive`, `equalsCaseAndAccentInsensitive`).
+
+### Tranche 3 (Commandes, Photos de commande, Versements clients & Reçus) — Terminée
+- **Repositories** : `OrderRepository` / `DriftOrderRepository`, `PaymentRepository` / `DriftPaymentRepository`.
+- **Écritures atomiques & Outbox** :
+  - Création de commande avec acompte (`createWithDeposit`) en UNE transaction SQLite atomique : `orders` + `order_photos` + `client_payments` + attribution séquentielle du numéro de reçu via `receipt_counters('clients')` + entrées d'outbox respectives. Rollback intégral en cas d'erreur.
+  - Diffing des photos de commande dans `saveOrder` : insertion des nouvelles photos, mise à jour de la `position` si changée, suppression logique (`deleted_at`) des photos retirées, avec outbox par ligne.
+- **Règles de suppression & modification** :
+  - Suppression d'une commande refusée si elle comporte au moins un versement NON annulé. Si tous les versements sont annulés, suppression logique de la commande et de ses `order_photos` (les versements restent conservés dans la base).
+  - Modification de prix refusée si `price < total_versements_actifs`.
+  - Suppression d'un client : la règle « au moins une commande active » vérifiée directement en SQL via `OrderRepository.hasNonDeletedOrdersForClient(clientId)`.
+- **Versements & Annulation** :
+  - Reliquat calculé dynamiquement : `prix - somme(versements actifs)`. Un seul accesseur central `activePaymentsOf(orderId)` dans `AppStore`.
+  - Refus d'un versement dont le montant dépasse le reliquat restant.
+  - Annulation (`voidClientPayment`) : pose `voided_at`, `void_reason`, `updated_at`, outbox `upsert`. Double annulation strictement rejetée. Jamais de suppression physique (`DELETE`) ni de modification de montant ou de date.
+  - Versement annulé affiché en atténué avec mention « Annulé (motif) » dans l'historique.
+- **Numéros de reçus & Affichage** :
+  - Numéro stocké sous forme d'entier séquentiel unique dans `receipt_number`.
+  - Format d'affichage : préfixe distinctif `CMD-0001` pour les clients (différencié du format `0001` des apprentis).
+  - Reçu en photographie du moment : solde affiché = `prix - somme(versements actifs dont receipt_number <= reçu.receipt_number)`.
+  - Tampon de reçu : « ANNULÉ » en rouge (`Pal.thread`) si le versement est annulé ; « SOLDÉ » ou « PAYÉ » sinon.
+- **Dates jour-seul & fuseaux horaires** :
+  - Les dates jour-seul (`deliveryDate`) sont normalisées en UTC calendaire (`DateTime.utc(year, month, day)`) garantissant un aller-retour exact sans décalage quel que soit le fuseau horaire (`Africa/Lagos` UTC+1, `America/New_York` UTC-5).
+  - Les calculs de tableau de bord (délais, retards) restent en Dart avec bornes en heure locale.
+- **DemoSeeder** :
+  - Commandes + photos + versements démo insérés ensemble sous la clé `'demo_seeded:orders'` en debug uniquement, sans écriture dans `sync_outbox`.
+  - Numéros de reçus séquentiels attribués aux versements démo et compteur `receipt_counters('clients')` calé dessus.
+  - `reconcileReceiptCounters()` exécuté à l'initialisation de l'atelier pour garantir la cohérence continue des compteurs.

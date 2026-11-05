@@ -9,13 +9,19 @@ class OrderDetailScreen extends StatelessWidget {
 
   void _openReceiptForClientPayment(BuildContext context, Order o, Client? client, ClientPayment cp) {
     final s = context.read<AppStore>();
-    final toDate = s.paymentsOfOrder(o.id).where((p) => p.paidAt.isBefore(cp.paidAt) || p.paidAt.isAtSameMomentAs(cp.paidAt)).fold(0, (sum, p) => sum + p.amount);
+    final toDate = s.activePaymentsOf(o.id)
+        .where((p) => p.receiptNumber <= cp.receiptNumber)
+        .fold(0, (sum, p) => sum + p.amount);
     final remaining = (o.price - toDate).clamp(0, 1 << 40).toInt();
-    final cleanNo = cp.id.replaceAll(RegExp(r'[^0-9]'), '');
+    final receiptFormatted = 'CMD-${cp.receiptNumber.toString().padLeft(4, '0')}';
+    final stamp = cp.isVoided
+        ? 'ANNULÉ'
+        : (remaining <= 0 ? 'SOLDÉ' : 'PAYÉ');
+
     openReceiptScreen(
       context,
       ReceiptData(
-        receiptNo: cleanNo.isEmpty ? '0001' : cleanNo.padLeft(4, '0'),
+        receiptNo: receiptFormatted,
         atelierName: s.atelierName,
         title: 'Reçu de paiement commande',
         beneficiaryName: client?.name ?? 'Client',
@@ -28,10 +34,62 @@ class OrderDetailScreen extends StatelessWidget {
         totalPaidToDate: toDate,
         remainingAmount: remaining,
         nextDueDate: o.deliveryDate,
-        stampText: remaining <= 0 ? 'SOLDÉ' : 'PAYÉ',
+        stampText: stamp,
         itemDetail: o.title,
       ),
     );
+  }
+
+  Future<void> _promptVoidPayment(BuildContext context, AppStore s, ClientPayment payment) async {
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Annuler le versement'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Montant : ${fcfa(payment.amount)}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Motif d\'annulation',
+                hintText: 'Ex: Erreur de saisie',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Retour'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Pal.thread),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Annuler le versement'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final reason = reasonController.text.trim();
+      try {
+        await s.voidClientPayment(payment.id, reason.isEmpty ? 'Annulé' : reason);
+        if (context.mounted) {
+          toast(context, 'Versement annulé');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('StateError: ', ''));
+        }
+      }
+    }
   }
 
   @override
@@ -163,30 +221,15 @@ class OrderDetailScreen extends StatelessWidget {
                       title: 'Paiement de ${client?.name ?? 'client'}',
                       max: rest,
                       onSave: (amount, note) async {
-                        await s.addClientPayment(o.id, amount, note);
-                        if (context.mounted) {
-                          final updatedPaid = s.paidOf(o);
-                          final updatedRest = s.remainingOf(o);
-                          openReceiptScreen(
-                            context,
-                            ReceiptData(
-                              receiptNo: '${(DateTime.now().millisecondsSinceEpoch % 10000)}'.padLeft(4, '0'),
-                              atelierName: s.atelierName,
-                              title: 'Reçu de commande',
-                              beneficiaryName: client?.name ?? 'Client',
-                              beneficiaryRole: 'Client(e)',
-                              beneficiaryPhone: client?.phone ?? '',
-                              date: DateTime.now(),
-                              amountPaid: amount,
-                              note: note.isEmpty ? 'Acompte / règlement commande' : note,
-                              totalFee: o.price,
-                              totalPaidToDate: updatedPaid,
-                              remainingAmount: updatedRest,
-                              nextDueDate: o.deliveryDate,
-                              stampText: updatedRest <= 0 ? 'SOLDÉ' : 'PAYÉ',
-                              itemDetail: o.title,
-                            ),
-                          );
+                        try {
+                          final payment = await s.addClientPayment(o.id, amount, note);
+                          if (context.mounted) {
+                            _openReceiptForClientPayment(context, o, client, payment);
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            toast(context, e.toString().replaceAll('Exception: ', '').replaceAll('ArgumentError: ', '').replaceAll('StateError: ', ''));
+                          }
                         }
                       },
                     ),
@@ -202,28 +245,58 @@ class OrderDetailScreen extends StatelessWidget {
             StaggeredFadeIn(
               index: 7 + i,
               isCard: true,
-              child: Panel(
-                onTap: () => _openReceiptForClientPayment(context, o, client, payments[i]),
-                padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
-                child: Row(children: [
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(fcfa(payments[i].amount), style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('${fmtDate(payments[i].paidAt)}${payments[i].note.isEmpty ? '' : '  -  ${payments[i].note}'}', style: const TextStyle(color: Pal.slate, fontSize: 13)),
-                    ]),
-                  ),
-                  IconButton(
-                    tooltip: 'Voir le reçu',
-                    icon: const Icon(Icons.receipt_long_outlined, size: 20, color: Pal.cobalt),
-                    onPressed: () => _openReceiptForClientPayment(context, o, client, payments[i]),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () async {
-                      if (await confirm(context, 'Supprimer ce paiement ?', fcfa(payments[i].amount))) await s.deleteClientPayment(payments[i].id);
-                    },
-                  ),
-                ]),
+              child: Opacity(
+                opacity: payments[i].isVoided ? 0.55 : 1.0,
+                child: Panel(
+                  onTap: () => _openReceiptForClientPayment(context, o, client, payments[i]),
+                  padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(
+                          children: [
+                            Text(
+                              fcfa(payments[i].amount),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                decoration: payments[i].isVoided ? TextDecoration.lineThrough : null,
+                              ),
+                            ),
+                            if (payments[i].isVoided) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Pal.thread.withAlpha(25),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Annulé${payments[i].voidReason != null && payments[i].voidReason!.isNotEmpty ? ' (${payments[i].voidReason})' : ''}',
+                                  style: const TextStyle(color: Pal.thread, fontSize: 11, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          '${fmtDate(payments[i].paidAt)}${payments[i].note.isEmpty ? '' : '  -  ${payments[i].note}'}',
+                          style: const TextStyle(color: Pal.slate, fontSize: 13),
+                        ),
+                      ]),
+                    ),
+                    IconButton(
+                      tooltip: 'Voir le reçu',
+                      icon: const Icon(Icons.receipt_long_outlined, size: 20, color: Pal.cobalt),
+                      onPressed: () => _openReceiptForClientPayment(context, o, client, payments[i]),
+                    ),
+                    if (!payments[i].isVoided)
+                      IconButton(
+                        tooltip: 'Annuler le versement',
+                        icon: const Icon(Icons.cancel_outlined, size: 20, color: Pal.slate),
+                        onPressed: () => _promptVoidPayment(context, s, payments[i]),
+                      ),
+                  ]),
+                ),
               ),
             ),
         ],

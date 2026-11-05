@@ -20,6 +20,11 @@ abstract class OrderRepository {
   Future<List<Order>> getByClient(String clientId);
   Future<bool> hasNonDeletedOrdersForClient(String clientId);
   Future<void> save(Order order);
+  Future<void> createWithDeposit({
+    required Order order,
+    required int depositAmount,
+    String depositNote = 'Acompte',
+  });
   Future<void> delete(String id);
 }
 
@@ -295,6 +300,111 @@ class DriftOrderRepository implements OrderRepository {
               );
         }
       }
+    });
+  }
+
+  @override
+  Future<void> createWithDeposit({
+    required Order order,
+    required int depositAmount,
+    String depositNote = 'Acompte',
+  }) async {
+    if (depositAmount <= 0) {
+      throw ArgumentError('Le montant de l\'acompte doit être strictement positif.');
+    }
+    if (depositAmount > order.price) {
+      throw ArgumentError('Le montant de l\'acompte ne peut pas être supérieur au prix.');
+    }
+
+    final now = clock.now();
+    final createdAt = now;
+    final updatedAt = now;
+    final normDelivery = normalizeDate(order.deliveryDate);
+    final normFitting = order.fittingDate != null ? normalizeDateTime(order.fittingDate!) : null;
+
+    await db.transaction(() async {
+      // 1. Commande
+      await db.into(db.orders).insert(
+            db_layer.OrdersCompanion.insert(
+              id: order.id,
+              clientId: order.clientId,
+              modeleId: Value(order.modeleId),
+              title: order.title,
+              fabric: Value(order.fabric),
+              price: order.price,
+              deliveryDate: normDelivery,
+              fittingDate: Value(normFitting),
+              status: Value(order.status.name),
+              photoPath: Value(order.photos.firstOrNull),
+              photoUploadState: const Value('none'),
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+            ),
+          );
+
+      await db.into(db.syncOutbox).insert(
+            db_layer.SyncOutboxCompanion.insert(
+              id: idGenerator.generate(),
+              entity: 'orders',
+              entityId: order.id,
+              op: 'upsert',
+              createdAt: updatedAt,
+            ),
+          );
+
+      // 2. Photos
+      for (var pos = 0; pos < order.photos.length; pos++) {
+        final ph = order.photos[pos];
+        final photoId = idGenerator.generate();
+        await db.into(db.orderPhotos).insert(
+              db_layer.OrderPhotosCompanion.insert(
+                id: photoId,
+                orderId: order.id,
+                photoPath: ph,
+                position: Value(pos),
+                photoUploadState: const Value('none'),
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+            );
+
+        await db.into(db.syncOutbox).insert(
+              db_layer.SyncOutboxCompanion.insert(
+                id: idGenerator.generate(),
+                entity: 'order_photos',
+                entityId: photoId,
+                op: 'upsert',
+                createdAt: updatedAt,
+              ),
+            );
+      }
+
+      // 3. Versement (avec numéro de reçu séquentiel atomique)
+      final receiptNo = await db.nextReceiptNumber(counterName: 'clients');
+      final paymentId = idGenerator.generate();
+
+      await db.into(db.clientPayments).insert(
+            db_layer.ClientPaymentsCompanion.insert(
+              id: paymentId,
+              orderId: order.id,
+              amount: depositAmount,
+              paidAt: now,
+              receiptNumber: receiptNo,
+              note: Value(depositNote),
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+            ),
+          );
+
+      await db.into(db.syncOutbox).insert(
+            db_layer.SyncOutboxCompanion.insert(
+              id: idGenerator.generate(),
+              entity: 'client_payments',
+              entityId: paymentId,
+              op: 'upsert',
+              createdAt: updatedAt,
+            ),
+          );
     });
   }
 

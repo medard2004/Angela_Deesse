@@ -660,15 +660,19 @@ class _StampBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCancelled = text.toUpperCase() == 'ANNULÉ';
+    final color = isCancelled ? Pal.thread : Pal.cobalt;
+    final icon = isCancelled ? Icons.cancel_outlined : Icons.verified_rounded;
+
     return Container(
       width: 94,
       height: 94,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0x181747B8),
-        border: Border.all(color: Pal.cobalt, width: 2.5),
+        color: color.withAlpha(24),
+        border: Border.all(color: color, width: 2.5),
         boxShadow: [
-          BoxShadow(color: Pal.cobalt.withAlpha(40), blurRadius: 10, offset: const Offset(0, 3)),
+          BoxShadow(color: color.withAlpha(40), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),
       child: Center(
@@ -677,26 +681,26 @@ class _StampBadge extends StatelessWidget {
           height: 82,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Pal.cobalt.withAlpha(160), width: 1.2),
+            border: Border.all(color: color.withAlpha(160), width: 1.2),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.verified_rounded, color: Pal.cobalt, size: 22),
+              Icon(icon, color: color, size: 22),
               const SizedBox(height: 2),
               Text(
                 text.toUpperCase(),
-                style: const TextStyle(
-                  color: Pal.cobalt,
+                style: TextStyle(
+                  color: color,
                   fontWeight: FontWeight.w900,
                   fontSize: 13,
                   letterSpacing: 1.6,
                 ),
               ),
-              const Text(
+              Text(
                 'ANGELA ATELIER',
                 style: TextStyle(
-                  color: Pal.cobalt,
+                  color: color,
                   fontWeight: FontWeight.w700,
                   fontSize: 6.5,
                   letterSpacing: 1.0,

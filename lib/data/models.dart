@@ -102,16 +102,56 @@ class Order {
 }
 
 class ClientPayment {
-  ClientPayment({required this.id, required this.orderId, required this.amount, required this.paidAt, this.note = ''});
+  ClientPayment({
+    required this.id,
+    required this.orderId,
+    required this.amount,
+    required this.paidAt,
+    this.note = '',
+    this.receiptNumber = 0,
+    this.voidedAt,
+    this.voidReason,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? paidAt,
+        updatedAt = updatedAt ?? paidAt;
+
   final String id, orderId, note;
   final int amount;
   final DateTime paidAt;
+  final int receiptNumber;
+  final DateTime? voidedAt;
+  final String? voidReason;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  bool get isVoided => voidedAt != null;
+
   Map<String, Object?> toMap() => {
-        'id': id, 'order_id': orderId, 'amount': amount, 'paid_at': paidAt.millisecondsSinceEpoch, 'note': note,
+        'id': id,
+        'order_id': orderId,
+        'amount': amount,
+        'paid_at': paidAt.millisecondsSinceEpoch,
+        'note': note,
+        'receipt_number': receiptNumber,
+        'voided_at': voidedAt?.millisecondsSinceEpoch,
+        'void_reason': voidReason,
+        'created_at': createdAt.millisecondsSinceEpoch,
+        'updated_at': updatedAt.millisecondsSinceEpoch,
       };
+
   factory ClientPayment.fromMap(Map<String, Object?> m) => ClientPayment(
-      id: m['id'] as String, orderId: m['order_id'] as String, amount: _i(m['amount']),
-      paidAt: _d(m['paid_at']), note: _s(m['note']));
+        id: m['id'] as String,
+        orderId: m['order_id'] as String,
+        amount: _i(m['amount']),
+        paidAt: _d(m['paid_at']),
+        note: _s(m['note']),
+        receiptNumber: _i(m['receipt_number']),
+        voidedAt: _dn(m['voided_at']),
+        voidReason: m['void_reason'] as String?,
+        createdAt: m['created_at'] != null ? _d(m['created_at']) : null,
+        updatedAt: m['updated_at'] != null ? _d(m['updated_at']) : null,
+      );
 }
 
 class Apprentice {

@@ -63,9 +63,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       photos: _photos,
       createdAt: widget.order?.createdAt ?? DateTime.now(),
     );
-    await store.saveOrder(o);
     final dep = parseMoney(_deposit.text);
-    if (widget.order == null && dep > 0) await store.addClientPayment(o.id, (dep > o.price ? o.price : dep), 'Acompte');
+    final initialDeposit = (widget.order == null && dep > 0)
+        ? (dep > o.price ? o.price : dep)
+        : null;
+    await store.saveOrder(o, initialDeposit: initialDeposit, depositNote: 'Acompte');
     if (mounted) Navigator.pop(context);
   }
 

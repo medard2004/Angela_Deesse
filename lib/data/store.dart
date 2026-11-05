@@ -10,6 +10,7 @@ import 'repositories/client_repository.dart';
 import 'repositories/measurement_repository.dart';
 import 'repositories/modele_repository.dart';
 import 'repositories/order_repository.dart';
+import 'repositories/payment_repository.dart';
 import 'repositories/realisation_repository.dart';
 import 'utils/sort_utils.dart';
 
@@ -29,6 +30,7 @@ class AppStore extends ChangeNotifier {
     ModeleRepository? modeleRepository,
     RealisationRepository? realisationRepository,
     OrderRepository? orderRepository,
+    PaymentRepository? paymentRepository,
   }) : this._(
           db ?? AppDatabase(),
           clientRepository,
@@ -36,6 +38,7 @@ class AppStore extends ChangeNotifier {
           modeleRepository,
           realisationRepository,
           orderRepository,
+          paymentRepository,
         );
 
   AppStore._(
@@ -45,11 +48,13 @@ class AppStore extends ChangeNotifier {
     ModeleRepository? modeleRepository,
     RealisationRepository? realisationRepository,
     OrderRepository? orderRepository,
+    PaymentRepository? paymentRepository,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
         _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db),
         _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db),
         _realisationRepo = realisationRepository ?? DriftRealisationRepository(db: _db),
-        _orderRepo = orderRepository ?? DriftOrderRepository(db: _db) {
+        _orderRepo = orderRepository ?? DriftOrderRepository(db: _db),
+        _paymentRepo = paymentRepository ?? DriftPaymentRepository(db: _db) {
     _seedInMemory();
   }
 
@@ -59,12 +64,14 @@ class AppStore extends ChangeNotifier {
   final ModeleRepository _modeleRepo;
   final RealisationRepository _realisationRepo;
   final OrderRepository _orderRepo;
+  final PaymentRepository _paymentRepo;
 
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
   StreamSubscription<List<Modele>>? _modeleSub;
   StreamSubscription<List<Realisation>>? _realisationSub;
   StreamSubscription<List<Order>>? _orderSub;
+  StreamSubscription<List<ClientPayment>>? _paymentSub;
 
   Map<String, Modele> _allModelesById = {};
 
@@ -77,6 +84,7 @@ class AppStore extends ChangeNotifier {
   ModeleRepository get modeleRepo => _modeleRepo;
   RealisationRepository get realisationRepo => _realisationRepo;
   OrderRepository get orderRepo => _orderRepo;
+  PaymentRepository get paymentRepo => _paymentRepo;
 
   String atelierName = 'Angela Couture';
   List<Client> clients = [];
@@ -117,6 +125,9 @@ class AppStore extends ChangeNotifier {
     final dbOrders = await _orderRepo.getAll();
     orders = _sortOrders(dbOrders);
 
+    final dbPayments = await _paymentRepo.getAll();
+    clientPayments = _sortPayments(dbPayments);
+
     _clientSub?.cancel();
     _clientSub = _clientRepo.watchAll().listen((list) {
       clients = _sortClients(list);
@@ -150,6 +161,12 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
     });
 
+    _paymentSub?.cancel();
+    _paymentSub = _paymentRepo.watchAll().listen((list) {
+      clientPayments = _sortPayments(list);
+      notifyListeners();
+    });
+
     await _db.reconcileReceiptCounters();
 
     _initialized = true;
@@ -163,6 +180,7 @@ class AppStore extends ChangeNotifier {
     _modeleSub?.cancel();
     _realisationSub?.cancel();
     _orderSub?.cancel();
+    _paymentSub?.cancel();
     super.dispose();
   }
 
@@ -196,39 +214,18 @@ class AppStore extends ChangeNotifier {
     return copy;
   }
 
+  List<ClientPayment> _sortPayments(List<ClientPayment> list) {
+    final copy = List<ClientPayment>.from(list);
+    copy.sort((a, b) {
+      final d = b.paidAt.compareTo(a.paidAt);
+      if (d != 0) return d;
+      return b.receiptNumber.compareTo(a.receiptNumber);
+    });
+    return copy;
+  }
+
   // ---------- Données de démonstration (entités encore en mémoire) ----------
   void _seedInMemory() {
-    // (client, titre, tissu, prix, livraison J+, statut, déjà payé, essayage, modèle)
-    final defs = <(int, String, String, int, int, OrderStatus, int, DateTime?, int?)>[
-      (7, 'Robe cocktail', 'Satin émeraude', 45000, -3, OrderStatus.cours, 20000, null, null),
-      (8, 'Tailleur pantalon', 'Crêpe noir', 60000, -1, OrderStatus.cours, 30000, null, null),
-      (2, 'Ensemble bazin brodé', 'Bazin riche', 75000, 0, OrderStatus.prete, 50000, null, 2),
-      (3, 'Robe de mariage civil', 'Dentelle ivoire', 120000, 1, OrderStatus.cours, 70000, null, 0),
-      (0, 'Robe pagne', 'Wax Vlisco', 38000, 3, OrderStatus.cours, 15000, null, 1),
-      (1, 'Ensemble pagne', 'Wax doré', 55000, 5, OrderStatus.attente, 25000, _day(0, 10, 30), 1),
-      (4, 'Chemise bazin', 'Bazin bleu', 28000, 9, OrderStatus.attente, 10000, null, 2),
-      (5, 'Costume 3 pièces', 'Laine anthracite', 140000, 12, OrderStatus.cours, 70000, _day(6, 15), 3),
-      (6, 'Boubou brodé', 'Brocart blanc', 95000, 14, OrderStatus.attente, 30000, _day(8, 9), 4),
-      (0, 'Robe enfant', 'Coton rose', 22000, 16, OrderStatus.attente, 0, null, 5),
-      (4, 'Jupe wax', 'Wax Hollandais', 18000, 20, OrderStatus.attente, 18000, null, null),
-      (8, 'Robe longue', 'Satin bordeaux', 52000, 25, OrderStatus.attente, 20000, null, 0),
-      (2, 'Robe wax', 'Wax rouge', 30000, -10, OrderStatus.livree, 30000, null, null),
-      (1, 'Chemise', 'Bazin blanc', 25000, -15, OrderStatus.livree, 25000, null, 2),
-      (5, 'Costume', 'Lin beige', 110000, -20, OrderStatus.livree, 110000, null, 3),
-    ];
-    for (var i = 0; i < defs.length; i++) {
-      final d = defs[i];
-      final id = 'o$i';
-      final paid = d.$7;
-      if (paid >= 50000) {
-        final first = (paid * .6 / 5000).round() * 5000;
-        clientPayments.add(ClientPayment(id: 'p${i}a', orderId: id, amount: first, paidAt: _day(-(6 + i)), note: 'Acompte'));
-        clientPayments.add(ClientPayment(id: 'p${i}b', orderId: id, amount: paid - first, paidAt: _day(-(i % 4)), note: 'Complément'));
-      } else if (paid > 0) {
-        clientPayments.add(ClientPayment(id: 'p${i}a', orderId: id, amount: paid, paidAt: _day(-(i % 9)), note: 'Acompte'));
-      }
-    }
-
     apprentices = [
       Apprentice(id: 'a0', name: 'Kafui Amedome', phone: '90 22 41 18', startDate: _day(-120), totalFee: 150000, nextDue: _day(4)),
       Apprentice(id: 'a1', name: 'Mawuli Sodji', phone: '91 08 77 30', startDate: _day(-200), totalFee: 120000, nextDue: _day(-2)),
@@ -248,7 +245,7 @@ class AppStore extends ChangeNotifier {
     clients = _sortClients(clients);
     orders.sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
     measurements = _sortMeasurements(measurements);
-    clientPayments.sort((a, b) => b.paidAt.compareTo(a.paidAt));
+    clientPayments = _sortPayments(clientPayments);
     apprenticePayments.sort((a, b) => b.paidAt.compareTo(a.paidAt));
     apprentices.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     modeles = _sortModeles(modeles);
@@ -278,11 +275,13 @@ class AppStore extends ChangeNotifier {
   List<Order> ordersOfClient(String clientId) => orders.where((o) => o.clientId == clientId).toList().reversed.toList();
   List<Measurement> measurementsOf(String clientId) => measurements.where((m) => m.clientId == clientId).toList();
   List<ClientPayment> paymentsOfOrder(String orderId) => clientPayments.where((p) => p.orderId == orderId).toList();
+  List<ClientPayment> activePaymentsOf(String orderId) =>
+      clientPayments.where((p) => p.orderId == orderId && !p.isVoided).toList();
   List<ApprenticePayment> paymentsOfApprentice(String apprenticeId) =>
       apprenticePayments.where((p) => p.apprenticeId == apprenticeId).toList();
 
   // ---------- Calculs ----------
-  int paidOf(Order o) => paymentsOfOrder(o.id).fold(0, (s, p) => s + p.amount);
+  int paidOf(Order o) => activePaymentsOf(o.id).fold(0, (s, p) => s + p.amount);
   int remainingOf(Order o) => (o.price - paidOf(o)).clamp(0, 1 << 40).toInt();
   int clientRemaining(String clientId) => ordersOfClient(clientId).fold(0, (s, o) => s + remainingOf(o));
   int get totalClientRemaining => orders.fold(0, (s, o) => s + remainingOf(o));
@@ -353,8 +352,17 @@ class AppStore extends ChangeNotifier {
   }
 
   // ---------- Écritures Commandes (Drift) ----------
-  Future<void> saveOrder(Order o) async {
-    await _orderRepo.save(o);
+  Future<void> saveOrder(Order o, {int? initialDeposit, String? depositNote}) async {
+    if (initialDeposit != null && initialDeposit > 0) {
+      await _orderRepo.createWithDeposit(
+        order: o,
+        depositAmount: initialDeposit,
+        depositNote: depositNote ?? 'Acompte',
+      );
+      clientPayments = _sortPayments(await _paymentRepo.getAll());
+    } else {
+      await _orderRepo.save(o);
+    }
     orders = _sortOrders(await _orderRepo.getAll());
     notifyListeners();
   }
@@ -365,12 +373,35 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addClientPayment(String orderId, int amount, String note) async => _put(
-      clientPayments, ClientPayment(id: newId(), orderId: orderId, amount: amount, paidAt: DateTime.now(), note: note), '', (x) => x.id);
+  // ---------- Écritures Versements Clients & Reçus (Drift) ----------
+  Future<ClientPayment> addClientPayment(String orderId, int amount, String note) async {
+    final o = orderById(orderId);
+    if (o == null) {
+      throw StateError('Commande introuvable.');
+    }
+    final rest = remainingOf(o);
+    if (amount > rest) {
+      throw ArgumentError('Le montant du versement ($amount FCFA) dépasse le reliquat restant ($rest FCFA).');
+    }
+    final p = await _paymentRepo.addPayment(
+      orderId: orderId,
+      amount: amount,
+      note: note,
+    );
+    clientPayments = _sortPayments(await _paymentRepo.getAll());
+    notifyListeners();
+    return p;
+  }
 
-  Future<void> deleteClientPayment(String id) async {
-    clientPayments.removeWhere((p) => p.id == id);
-    _commit();
+  Future<ClientPayment> voidClientPayment(String id, String reason) async {
+    final p = await _paymentRepo.voidPayment(id: id, reason: reason);
+    clientPayments = _sortPayments(await _paymentRepo.getAll());
+    notifyListeners();
+    return p;
+  }
+
+  Future<void> deleteClientPayment(String id, [String reason = 'Annulé']) async {
+    await voidClientPayment(id, reason);
   }
 
   Future<void> saveApprentice(Apprentice a) async => _put(apprentices, a, a.id, (x) => x.id);
