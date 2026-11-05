@@ -14,6 +14,7 @@ import 'repositories/modele_repository.dart';
 import 'repositories/order_repository.dart';
 import 'repositories/payment_repository.dart';
 import 'repositories/realisation_repository.dart';
+import 'repositories/settings_repository.dart';
 import 'utils/sort_utils.dart';
 
 IdGenerator defaultIdGenerator = const UuidV7IdGenerator();
@@ -33,6 +34,7 @@ class AppStore extends ChangeNotifier {
     PaymentRepository? paymentRepository,
     ApprenticeRepository? apprenticeRepository,
     ApprenticePaymentRepository? apprenticePaymentRepository,
+    SettingsRepository? settingsRepository,
   }) : this._(
           db ?? AppDatabase(),
           clientRepository,
@@ -43,6 +45,7 @@ class AppStore extends ChangeNotifier {
           paymentRepository,
           apprenticeRepository,
           apprenticePaymentRepository,
+          settingsRepository,
         );
 
   AppStore._(
@@ -55,6 +58,7 @@ class AppStore extends ChangeNotifier {
     PaymentRepository? paymentRepository,
     ApprenticeRepository? apprenticeRepository,
     ApprenticePaymentRepository? apprenticePaymentRepository,
+    SettingsRepository? settingsRepository,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
         _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db),
         _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db),
@@ -62,7 +66,8 @@ class AppStore extends ChangeNotifier {
         _orderRepo = orderRepository ?? DriftOrderRepository(db: _db),
         _paymentRepo = paymentRepository ?? DriftPaymentRepository(db: _db),
         _apprenticeRepo = apprenticeRepository ?? DriftApprenticeRepository(db: _db),
-        _apprenticePaymentRepo = apprenticePaymentRepository ?? DriftApprenticePaymentRepository(db: _db);
+        _apprenticePaymentRepo = apprenticePaymentRepository ?? DriftApprenticePaymentRepository(db: _db),
+        _settingsRepo = settingsRepository ?? DriftSettingsRepository(db: _db);
 
   final AppDatabase _db;
   final ClientRepository _clientRepo;
@@ -73,6 +78,7 @@ class AppStore extends ChangeNotifier {
   final PaymentRepository _paymentRepo;
   final ApprenticeRepository _apprenticeRepo;
   final ApprenticePaymentRepository _apprenticePaymentRepo;
+  final SettingsRepository _settingsRepo;
 
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
@@ -82,8 +88,10 @@ class AppStore extends ChangeNotifier {
   StreamSubscription<List<ClientPayment>>? _paymentSub;
   StreamSubscription<List<Apprentice>>? _apprenticeSub;
   StreamSubscription<List<ApprenticePayment>>? _apprenticePaymentSub;
+  StreamSubscription<Map<String, String>>? _settingsSub;
 
   Map<String, Modele> _allModelesById = {};
+  Map<String, String> _settingsMap = {};
 
   bool _initialized = false;
   bool get isInitialized => _initialized;
@@ -97,8 +105,14 @@ class AppStore extends ChangeNotifier {
   PaymentRepository get paymentRepo => _paymentRepo;
   ApprenticeRepository get apprenticeRepo => _apprenticeRepo;
   ApprenticePaymentRepository get apprenticePaymentRepo => _apprenticePaymentRepo;
+  SettingsRepository get settingsRepo => _settingsRepo;
 
-  String atelierName = 'Angela Couture';
+  String get atelierName => _settingsMap[kSettingAtelierName] ?? kDefaultAtelierName;
+  bool get notifDelivery => _settingsMap[kSettingNotifDelivery] != 'false';
+  bool get notifFitting => _settingsMap[kSettingNotifFitting] != 'false';
+  bool get notifPayments => _settingsMap[kSettingNotifPayments] != 'false';
+  bool get notifLate => _settingsMap[kSettingNotifLate] != 'false';
+
   List<Client> clients = [];
   List<Measurement> measurements = [];
   List<Modele> modeles = [];
@@ -108,8 +122,38 @@ class AppStore extends ChangeNotifier {
   List<ApprenticePayment> apprenticePayments = [];
   List<Realisation> realisations = [];
 
-  void setAtelierName(String v) {
-    atelierName = v.trim().isEmpty ? 'Angela Couture' : v.trim();
+  Future<void> setAtelierName(String v) async {
+    final name = v.trim().isEmpty ? kDefaultAtelierName : v.trim();
+    await _settingsRepo.set(kSettingAtelierName, name);
+    _settingsMap[kSettingAtelierName] = name;
+    notifyListeners();
+  }
+
+  Future<void> setNotifDelivery(bool v) async {
+    final str = v ? 'true' : 'false';
+    await _settingsRepo.set(kSettingNotifDelivery, str);
+    _settingsMap[kSettingNotifDelivery] = str;
+    notifyListeners();
+  }
+
+  Future<void> setNotifFitting(bool v) async {
+    final str = v ? 'true' : 'false';
+    await _settingsRepo.set(kSettingNotifFitting, str);
+    _settingsMap[kSettingNotifFitting] = str;
+    notifyListeners();
+  }
+
+  Future<void> setNotifPayments(bool v) async {
+    final str = v ? 'true' : 'false';
+    await _settingsRepo.set(kSettingNotifPayments, str);
+    _settingsMap[kSettingNotifPayments] = str;
+    notifyListeners();
+  }
+
+  Future<void> setNotifLate(bool v) async {
+    final str = v ? 'true' : 'false';
+    await _settingsRepo.set(kSettingNotifLate, str);
+    _settingsMap[kSettingNotifLate] = str;
     notifyListeners();
   }
 
@@ -145,6 +189,9 @@ class AppStore extends ChangeNotifier {
 
     final dbApprenticePayments = await _apprenticePaymentRepo.getAll();
     apprenticePayments = _sortApprenticePayments(dbApprenticePayments);
+
+    final dbSettings = await _settingsRepo.getAll();
+    _settingsMap = Map<String, String>.from(dbSettings);
 
     _clientSub?.cancel();
     _clientSub = _clientRepo.watchAll().listen((list) {
@@ -197,6 +244,12 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
     });
 
+    _settingsSub?.cancel();
+    _settingsSub = _settingsRepo.watchAll().listen((map) {
+      _settingsMap = Map<String, String>.from(map);
+      notifyListeners();
+    });
+
     await _db.reconcileReceiptCounters();
 
     _initialized = true;
@@ -213,6 +266,7 @@ class AppStore extends ChangeNotifier {
     _paymentSub?.cancel();
     _apprenticeSub?.cancel();
     _apprenticePaymentSub?.cancel();
+    _settingsSub?.cancel();
     super.dispose();
   }
 

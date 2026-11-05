@@ -9,9 +9,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Interrupteurs purement visuels (maquette).
-  bool _delivery = true, _fitting = true, _payments = true, _late = true;
-
   Future<void> _rename(AppStore s) async {
     final ctrl = TextEditingController(text: s.atelierName);
     final v = await showDialog<String>(
@@ -78,10 +75,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Panel(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(children: [
-              _switch(Icons.local_shipping_outlined, 'Livraisons', 'Deux jours avant et le jour même', _delivery, (v) => setState(() => _delivery = v)),
-              _switch(Icons.schedule_rounded, 'Essayages', 'La veille et le matin', _fitting, (v) => setState(() => _fitting = v)),
-              _switch(Icons.account_balance_wallet_outlined, 'Paiements', 'Clients et apprentis en attente', _payments, (v) => setState(() => _payments = v)),
-              _switch(Icons.warning_amber_rounded, 'Commandes en retard', 'Alerte chaque matin', _late, (v) => setState(() => _late = v)),
+              _switch(Icons.local_shipping_outlined, 'Livraisons', 'Deux jours avant et le jour même', s.notifDelivery, (v) => s.setNotifDelivery(v)),
+              _switch(Icons.schedule_rounded, 'Essayages', 'La veille et le matin', s.notifFitting, (v) => s.setNotifFitting(v)),
+              _switch(Icons.account_balance_wallet_outlined, 'Paiements', 'Clients et apprentis en attente', s.notifPayments, (v) => s.setNotifPayments(v)),
+              _switch(Icons.warning_amber_rounded, 'Commandes en retard', 'Alerte chaque matin', s.notifLate, (v) => s.setNotifLate(v)),
             ]),
           ),
         ),
