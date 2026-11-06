@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
+import '../data/services/notification_center_service.dart';
 import '../ui.dart';
 import '../screens/home_screen.dart';
 import '../screens/orders_screen.dart';
@@ -43,6 +44,15 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final _key = GlobalKey<ScaffoldState>();
   Section _current = Section.home;
+
+  @override
+  void initState() {
+    super.initState();
+    if (NotificationCenterService.pendingOpenNotifications) {
+      NotificationCenterService.pendingOpenNotifications = false;
+      _current = Section.notifications;
+    }
+  }
 
   void _go(Section s) => setState(() => _current = s);
   void _menu() => _key.currentState?.openDrawer();

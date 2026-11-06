@@ -1,5 +1,6 @@
 import '../data/services/alert_engine.dart';
 import '../data/services/contact_launcher.dart';
+import '../data/services/notification_center_service.dart';
 import '../data/utils/message_templates.dart';
 import '../ui.dart';
 import 'apprentice_detail_screen.dart';
@@ -80,11 +81,10 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  bool _read = false;
-
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppStore>();
+    final notifService = context.watch<NotificationCenterService?>();
     final atelier = s.atelierName;
 
     const engine = AlertEngine();
@@ -96,6 +96,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       remainingOfOrder: s.remainingOf,
       remainingOfApprentice: s.apprenticeRemaining,
     );
+
+    // Nettoyage automatique des clés d'alertes obsolètes
+    if (notifService != null) {
+      notifService.prune(activeKeys: alerts.map((a) => a.key).toSet());
+    }
 
     final items = <_Notif>[];
 
@@ -178,43 +183,66 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       title: 'Notifications',
       eyebrow: 'Rappels',
       onMenu: widget.onMenu,
-      actions: [titleAction(Icons.done_all_rounded, () => setState(() => _read = true), 'Tout marquer comme lu')],
+      actions: [
+        titleAction(
+          Icons.done_all_rounded,
+          () => notifService?.markAllAsRead(items.map((i) => i.key)),
+          'Tout marquer comme vu',
+        ),
+      ],
       child: items.isEmpty
           ? ListView(children: const [EmptyState(icon: Icons.notifications_none_rounded, title: 'Aucune notification', hint: 'Les rappels de livraison, essayage et paiement apparaissent ici.')])
           : TwoPhaseLoader(
               skeleton: const SkeletonList(count: 4),
               child: ListView(padding: kListPadding, children: [
-                for (var i = 0; i < items.length; i++)
-                  StaggeredFadeIn(
-                    index: i,
-                    isCard: true,
-                    child: Panel(
-                      onTap: () => items[i].open(context),
-                      padding: const EdgeInsets.all(14),
-                      child: Row(children: [
-                        Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(color: items[i].bg, borderRadius: BorderRadius.circular(17)),
-                          child: Icon(items[i].icon, color: items[i].fg),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(items[i].title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
-                            const SizedBox(height: 2),
-                            Text(items[i].sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Pal.slate, fontSize: 13)),
+                for (var i = 0; i < items.length; i++) ...[
+                  Builder(builder: (context) {
+                    final isRead = notifService?.isRead(items[i].key) ?? false;
+                    return StaggeredFadeIn(
+                      index: i,
+                      isCard: true,
+                      child: Opacity(
+                        opacity: isRead ? 0.65 : 1.0,
+                        child: Panel(
+                          onTap: () {
+                            notifService?.markAsRead(items[i].key);
+                            items[i].open(context);
+                          },
+                          padding: const EdgeInsets.all(14),
+                          child: Row(children: [
+                            Container(
+                              width: 50, height: 50,
+                              decoration: BoxDecoration(color: items[i].bg, borderRadius: BorderRadius.circular(17)),
+                              child: Icon(items[i].icon, color: items[i].fg),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(
+                                  items[i].title,
+                                  style: TextStyle(
+                                    fontWeight: isRead ? FontWeight.w600 : FontWeight.w800,
+                                    fontSize: 15.5,
+                                    color: isRead ? Pal.slate : Pal.ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(items[i].sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Pal.slate, fontSize: 13)),
+                              ]),
+                            ),
+                            if (items[i].onWhatsApp != null)
+                              IconButton(
+                                icon: const Icon(Icons.send_rounded, size: 20, color: Pal.cobalt),
+                                tooltip: 'Envoyer WhatsApp',
+                                onPressed: () => items[i].onWhatsApp!(context),
+                              ),
+                            if (!isRead) const PulsingIndicator(size: 9, color: Pal.orange),
                           ]),
                         ),
-                        if (items[i].onWhatsApp != null)
-                          IconButton(
-                            icon: const Icon(Icons.send_rounded, size: 20, color: Pal.cobalt),
-                            tooltip: 'Envoyer WhatsApp',
-                            onPressed: () => items[i].onWhatsApp!(context),
-                          ),
-                        if (!_read) const PulsingIndicator(size: 9, color: Pal.orange),
-                      ]),
-                    ),
-                  ),
+                      ),
+                    );
+                  }),
+                ],
               ]),
             ),
     );

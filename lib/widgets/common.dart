@@ -7,6 +7,8 @@ import '../core/format.dart';
 import '../core/motion.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
+import '../data/services/alert_engine.dart';
+import '../data/services/notification_center_service.dart';
 import '../data/services/photo_storage.dart';
 import '../data/store.dart';
 
@@ -145,11 +147,20 @@ class BrandMark extends StatelessWidget {
 
 /// Bouton carré blanc aux coins arrondis (menu, cloche, actions).
 class IconBox extends StatelessWidget {
-  const IconBox({super.key, required this.icon, required this.onTap, this.dot = false, this.tooltip});
+  const IconBox({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.dot = false,
+    this.badgeCount,
+    this.tooltip,
+  });
   final IconData icon;
   final VoidCallback onTap;
   final bool dot;
+  final int? badgeCount;
   final String? tooltip;
+
   @override
   Widget build(BuildContext context) => Semantics(
         button: true, label: tooltip,
@@ -160,7 +171,32 @@ class IconBox extends StatelessWidget {
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), boxShadow: softShadow(14)),
             child: Stack(alignment: Alignment.center, children: [
               Icon(icon, size: 20, color: Pal.ink),
-              if (dot) Positioned(top: 9, right: 10, child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Pal.orange, shape: BoxShape.circle))),
+              if (badgeCount != null && badgeCount! > 0)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: Pal.orange,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      badgeCount! > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                )
+              else if (dot)
+                Positioned(top: 9, right: 10, child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Pal.orange, shape: BoxShape.circle))),
             ]),
           ),
         ),
@@ -217,8 +253,24 @@ class AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final atelier = context.watch<AppStore?>()?.atelierName ?? AppBrand.defaultAtelierName;
+    final store = context.watch<AppStore?>();
+    final notifService = context.watch<NotificationCenterService?>();
+    final atelier = store?.atelierName ?? AppBrand.defaultAtelierName;
     final displayTitle = isHome ? atelier : (title ?? atelier);
+
+    int unreadAlerts = 0;
+    if (store != null && notifService != null) {
+      const engine = AlertEngine();
+      final alerts = engine.currentAlerts(
+        now: DateTime.now(),
+        orders: store.activeOrders,
+        apprentices: store.apprentices,
+        clientById: store.clientById,
+        remainingOfOrder: store.remainingOf,
+        remainingOfApprentice: store.apprenticeRemaining,
+      );
+      unreadAlerts = notifService.unreadCount(alerts);
+    }
 
     return Container(
       height: 56,
@@ -257,7 +309,8 @@ class AppHeader extends StatelessWidget {
                   const SizedBox(width: 8),
                   IconBox(
                     icon: Icons.notifications_none_rounded,
-                    dot: true,
+                    dot: unreadAlerts > 0,
+                    badgeCount: unreadAlerts,
                     tooltip: 'Notifications',
                     onTap: () => ShellScope.maybeOf(context)?.openNotifications(),
                   ),

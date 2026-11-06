@@ -37,3 +37,4 @@ class AlertStrings {
     return '$name · Formation';
   }
 }
+

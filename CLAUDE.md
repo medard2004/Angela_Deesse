@@ -392,3 +392,29 @@ Côté serveur (Laravel) :
   - Ressource drawable vectorielle monochrome Android `ic_stat_notification` (blanc sur transparent) pour éviter les carrés blancs sous Android.
   - Bouton contextuel WhatsApp ajouté sur chaque alerte dans `NotificationsScreen` via `ContactLauncher` et `MessageTemplates`.
 
+### Tranche Moteur d'Alertes Unique & Centre In-App (Parties A & B) — Terminée
+- **Moteur d'alertes unique (`AlertEngine`)** (`lib/data/services/alert_engine.dart`) :
+  - Source UNIQUE pour les alertes in-app (`currentAlerts(now)`) et les rappels futurs (`plannedReminders(now)`).
+  - Purement Dart, testable avec horloge injectée.
+  - Familles couvertes : livraisons (en retard, aujourd'hui, demain, dans 2 jours), essayages (aujourd'hui avec heure/sans heure, demain), échéances d'apprentis (dépassée, aujourd'hui, demain, approche <= 7 jours), soldes en attente (commandes prêtes avec solde dû > 0).
+  - Clés stables formatées en « famille:étape:idEntité:jourCible » (l'étape fait partie de la clé, changeant naturellement d'un jour à l'autre).
+  - Sévérité ordonnée : `late` (0) > `today` (1) > `tomorrow` (2) > `upcoming` (3) > `info` (4).
+  - Confidentialité : corps d'alerte sans aucun montant (`$client · $titre` ou `$apprenti · Formation`).
+  - Textes d'alertes centralisés dans `lib/data/utils/alert_strings.dart`.
+  - Invariant vérifié : pour chaque rappel planifié à l'instant T, `currentAlerts` à T contient l'alerte correspondante.
+- **Centre de notifications in-app (`NotificationCenterService`)** (`lib/data/services/notification_center_service.dart`) :
+  - Stockage des états vu / non vu hors base SQLite Drift et hors settings (aucun impact sur la synchronisation future) via `shared_preferences: ^2.5.6`.
+  - Nettoyage automatique des clés d'alertes disparues ou lues depuis plus de 60 jours (`prune`).
+  - Compteur réactif d'alertes non vues affiché sur l'icône de notification (`IconBox` avec badge numérique et pastille orange) dans l'en-tête `AppHeader` / `HomeScreen`.
+  - Dans `NotificationsScreen` : alertes non vues en évidence avec pastille orange pulsante, alertes vues atténuées à 65 % d'opacité.
+  - Toucher une alerte la marque automatiquement comme vue et navigue vers l'entité concernée (`OrderDetailScreen` ou `ApprenticeDetailScreen`).
+  - Bouton « Tout marquer comme vu » dans la barre d'action.
+  - Disparition automatique : les alertes disparaissent dès que leur condition métier disparaît (commande livrée, solde payé, apprenti soldé).
+  - Mémorisation de destination post-PIN (`pendingOpenNotifications`) assurant qu'un déverrouillage depuis une notification ouvre `NotificationsScreen` après validation du code sans navigation prématurée.
+- **Limites connues (décision 29)** :
+  - (a) Pas de rappels manuels personnalisés (exigeraient une table dédiée dans le schéma Drift v2).
+  - (b) Pas de rappel « sauvegarde en retard » avant la mise en œuvre de la synchronisation serveur.
+  - (c) Push serveur à étudier après la synchronisation.
+  - (d) Les actions « Fait » et « Reporter » d'une notification système (Partie C) n'affectent pas les états in-app car le gestionnaire natif d'arrière-plan n'accède à aucune donnée.
+
+

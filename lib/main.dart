@@ -6,6 +6,7 @@ import 'app.dart';
 import 'data/services/app_lock_manager.dart';
 import 'data/services/contact_launcher.dart';
 import 'data/services/external_action_tracker.dart';
+import 'data/services/notification_center_service.dart';
 import 'data/services/photo_storage.dart';
 import 'data/services/pin_security_service.dart';
 import 'data/services/secure_storage.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
     securityService: pinSecurityService,
     tracker: externalActionTracker,
   );
+  final notificationCenterService = await NotificationCenterService.create();
 
   runApp(
     MultiProvider(
@@ -40,6 +42,7 @@ Future<void> main() async {
         Provider<SecureStorage>.value(value: secureStorage),
         Provider<PinSecurityService>.value(value: pinSecurityService),
         Provider<AppLockManager>.value(value: appLockManager),
+        ChangeNotifierProvider<NotificationCenterService>.value(value: notificationCenterService),
         ChangeNotifierProvider(create: (_) => AppStore()),
       ],
       child: const AngelaApp(),
