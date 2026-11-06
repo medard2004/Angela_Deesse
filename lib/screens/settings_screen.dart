@@ -12,20 +12,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _rename(AppStore s) async {
-    final ctrl = TextEditingController(text: s.atelierName);
     final v = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Nom de l'atelier", style: TextStyle(fontWeight: FontWeight.w800)),
-        content: TextField(controller: ctrl, autofocus: true, textCapitalization: TextCapitalization.words, decoration: deco('Nom')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('Enregistrer')),
-        ],
-      ),
+      builder: (ctx) => _RenameAtelierDialog(initialName: s.atelierName),
     );
-    ctrl.dispose();
-    if (v != null) s.setAtelierName(v);
+    if (v != null && mounted) {
+      await s.setAtelierName(v);
+    }
   }
 
   Future<void> _toggleReminder(AppStore s, Future<void> Function(bool) setVal, bool v) async {
@@ -186,4 +179,46 @@ class _Icon extends StatelessWidget {
         decoration: BoxDecoration(color: const Color(0xFFE8EDFB), borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, color: Pal.cobalt, size: 18),
       );
+}
+
+class _RenameAtelierDialog extends StatefulWidget {
+  const _RenameAtelierDialog({required this.initialName});
+  final String initialName;
+
+  @override
+  State<_RenameAtelierDialog> createState() => _RenameAtelierDialogState();
+}
+
+class _RenameAtelierDialogState extends State<_RenameAtelierDialog> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Nom de l'atelier", style: TextStyle(fontWeight: FontWeight.w800)),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: deco('Nom'),
+        onSubmitted: (val) => Navigator.pop(context, val),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        TextButton(onPressed: () => Navigator.pop(context, _ctrl.text), child: const Text('Enregistrer')),
+      ],
+    );
+  }
 }

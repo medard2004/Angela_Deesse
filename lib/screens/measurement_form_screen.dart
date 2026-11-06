@@ -36,19 +36,10 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
   }
 
   Future<void> _addCustom() async {
-    final ctrl = TextEditingController();
     final label = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Ajouter une mesure'),
-        content: TextField(controller: ctrl, autofocus: true, textCapitalization: TextCapitalization.sentences, decoration: deco('Nom de la mesure')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Ajouter')),
-        ],
-      ),
+      builder: (ctx) => const _AddCustomMeasureDialog(),
     );
-    ctrl.dispose();
     if (label != null && label.isNotEmpty && !_c.containsKey(label)) {
       setState(() => _c[label] = TextEditingController());
     }
@@ -110,6 +101,47 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
           child: FilledButton(onPressed: _save, child: const Text('Enregistrer les mesures')),
         ),
       ]),
+    );
+  }
+}
+
+class _AddCustomMeasureDialog extends StatefulWidget {
+  const _AddCustomMeasureDialog();
+
+  @override
+  State<_AddCustomMeasureDialog> createState() => _AddCustomMeasureDialogState();
+}
+
+class _AddCustomMeasureDialogState extends State<_AddCustomMeasureDialog> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Ajouter une mesure'),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: deco('Nom de la mesure'),
+        onSubmitted: (val) => Navigator.pop(context, val.trim()),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        TextButton(onPressed: () => Navigator.pop(context, _ctrl.text.trim()), child: const Text('Ajouter')),
+      ],
     );
   }
 }
