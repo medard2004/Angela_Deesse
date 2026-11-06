@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../utils/jpeg_sanitizer.dart';
+import 'external_action_tracker.dart';
 
 /// Représentation d'une photo sélectionnée et stockée localement.
 class PickedPhoto {
@@ -56,11 +57,14 @@ class DefaultPhotoStorage implements PhotoStorage {
   DefaultPhotoStorage({
     ImagePicker? picker,
     Future<Directory> Function()? getBaseDir,
+    ExternalActionTracker? tracker,
   })  : _picker = picker ?? ImagePicker(),
-        _getBaseDir = getBaseDir ?? getApplicationDocumentsDirectory;
+        _getBaseDir = getBaseDir ?? getApplicationDocumentsDirectory,
+        _tracker = tracker;
 
   final ImagePicker _picker;
   final Future<Directory> Function() _getBaseDir;
+  final ExternalActionTracker? _tracker;
 
   Future<Directory> _getPhotosDir() async {
     final baseDir = await _getBaseDir();
@@ -83,12 +87,17 @@ class DefaultPhotoStorage implements PhotoStorage {
   @override
   Future<PickedPhoto?> pick(PhotoSource source) async {
     final imageSource = source == PhotoSource.camera ? ImageSource.camera : ImageSource.gallery;
-    final xFile = await _picker.pickImage(
-      source: imageSource,
-      maxWidth: PhotoStorage.maxWidth,
-      maxHeight: PhotoStorage.maxHeight,
-      imageQuality: PhotoStorage.imageQuality,
-    );
+    Future<XFile?> pickAction() => _picker.pickImage(
+          source: imageSource,
+          maxWidth: PhotoStorage.maxWidth,
+          maxHeight: PhotoStorage.maxHeight,
+          imageQuality: PhotoStorage.imageQuality,
+        );
+
+    final xFile = _tracker != null
+        ? await _tracker.runExternal(pickAction)
+        : await pickAction();
+
     if (xFile == null) return null;
     final bytes = await xFile.readAsBytes();
     return await saveBytes(bytes);

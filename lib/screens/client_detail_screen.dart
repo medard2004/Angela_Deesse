@@ -1,4 +1,6 @@
 import '../ui.dart';
+import '../data/services/contact_launcher.dart';
+import '../data/utils/message_templates.dart';
 import '../widgets/order_tile.dart';
 import 'client_form_screen.dart';
 import 'measurement_form_screen.dart';
@@ -71,7 +73,58 @@ class ClientDetailScreen extends StatelessWidget {
               index: 0,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(c.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                if (c.phone.isNotEmpty) Text(c.phone, style: const TextStyle(color: Pal.slate, fontSize: 13.5)),
+                if (c.phone.isNotEmpty)
+                  Row(
+                    children: [
+                      Text(c.phone, style: const TextStyle(color: Pal.slate, fontSize: 13.5)),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () async {
+                          final launcher = context.read<ContactLauncher?>();
+                          final res = await launcher?.call(c.phone);
+                          if (res != null && !res.success && context.mounted) {
+                            toast(context, res.errorMessage ?? 'Impossible de passer l\'appel');
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.phone_outlined, size: 18, color: Pal.cobalt),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final launcher = context.read<ContactLauncher?>();
+                          final message = rest > 0
+                              ? MessageTemplates.rappelSoldeDu(client: c.name, balance: rest, atelier: s.atelierName)
+                              : null;
+                          final res = await launcher?.whatsapp(c.phone, body: message);
+                          if (res != null && !res.success && context.mounted) {
+                            toast(context, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.chat_outlined, size: 18, color: Color(0xFF25D366)),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final launcher = context.read<ContactLauncher?>();
+                          final message = rest > 0
+                              ? MessageTemplates.rappelSoldeDu(client: c.name, balance: rest, atelier: s.atelierName)
+                              : null;
+                          final res = await launcher?.sms(c.phone, body: message);
+                          if (res != null && !res.success && context.mounted) {
+                            toast(context, res.errorMessage ?? 'Impossible d\'ouvrir les SMS');
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.sms_outlined, size: 18, color: Pal.slate),
+                        ),
+                      ),
+                    ],
+                  ),
               ]),
             ),
           ),

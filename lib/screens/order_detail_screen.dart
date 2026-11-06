@@ -1,4 +1,6 @@
 import '../ui.dart';
+import '../data/services/contact_launcher.dart';
+import '../data/utils/message_templates.dart';
 import 'client_detail_screen.dart';
 import 'order_form_screen.dart';
 import 'receipt_screen.dart';
@@ -123,12 +125,74 @@ class OrderDetailScreen extends StatelessWidget {
             Text(o.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 3),
             if (client != null)
-              InkWell(
-                onTap: () => push(context, ClientDetailScreen(clientId: client.id)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text(client.name, style: const TextStyle(color: Pal.slate, fontSize: 14, decoration: TextDecoration.underline)),
-                ),
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () => push(context, ClientDetailScreen(clientId: client.id)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(client.name, style: const TextStyle(color: Pal.slate, fontSize: 14, decoration: TextDecoration.underline)),
+                    ),
+                  ),
+                  if (client.phone.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () async {
+                        final launcher = context.read<ContactLauncher?>();
+                        final res = await launcher?.call(client.phone);
+                        if (res != null && !res.success && context.mounted) {
+                          toast(context, res.errorMessage ?? 'Impossible de passer l\'appel');
+                        }
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.phone_outlined, size: 18, color: Pal.cobalt),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () async {
+                        final launcher = context.read<ContactLauncher?>();
+                        final String message;
+                        if (o.status == OrderStatus.prete) {
+                          message = MessageTemplates.commandePrete(client: client.name, orderTitle: o.title, balance: rest, atelier: s.atelierName);
+                        } else if (o.fittingDate != null && daysUntil(o.fittingDate!) >= 0) {
+                          message = MessageTemplates.rappelEssayage(client: client.name, orderTitle: o.title, fittingDate: o.fittingDate!, atelier: s.atelierName);
+                        } else if (daysUntil(o.deliveryDate) >= 0) {
+                          message = MessageTemplates.rappelLivraison(client: client.name, orderTitle: o.title, deliveryDate: o.deliveryDate, atelier: s.atelierName);
+                        } else {
+                          message = MessageTemplates.rappelSoldeDu(client: client.name, balance: rest, atelier: s.atelierName);
+                        }
+                        final res = await launcher?.whatsapp(client.phone, body: message);
+                        if (res != null && !res.success && context.mounted) {
+                          toast(context, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
+                        }
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.chat_outlined, size: 18, color: Color(0xFF25D366)),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () async {
+                        final launcher = context.read<ContactLauncher?>();
+                        final String message;
+                        if (o.status == OrderStatus.prete) {
+                          message = MessageTemplates.commandePrete(client: client.name, orderTitle: o.title, balance: rest, atelier: s.atelierName);
+                        } else {
+                          message = MessageTemplates.rappelLivraison(client: client.name, orderTitle: o.title, deliveryDate: o.deliveryDate, atelier: s.atelierName);
+                        }
+                        final res = await launcher?.sms(client.phone, body: message);
+                        if (res != null && !res.success && context.mounted) {
+                          toast(context, res.errorMessage ?? 'Impossible d\'ouvrir les SMS');
+                        }
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.sms_outlined, size: 18, color: Pal.slate),
+                      ),
+                    ),
+                  ],
+                ],
               ),
           ]),
         ),

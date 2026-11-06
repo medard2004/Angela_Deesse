@@ -1,4 +1,6 @@
 import '../ui.dart';
+import '../data/services/contact_launcher.dart';
+import '../data/utils/message_templates.dart';
 import 'apprentice_screen.dart';
 import 'receipt_screen.dart';
 
@@ -142,7 +144,70 @@ class ApprenticeDetailScreen extends StatelessWidget {
               index: 0,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(a.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                if (a.phone.isNotEmpty) Text(a.phone, style: const TextStyle(color: Pal.slate, fontSize: 13.5)),
+                if (a.phone.isNotEmpty)
+                  Row(
+                    children: [
+                      Text(a.phone, style: const TextStyle(color: Pal.slate, fontSize: 13.5)),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () async {
+                          final launcher = context.read<ContactLauncher?>();
+                          final res = await launcher?.call(a.phone);
+                          if (res != null && !res.success && context.mounted) {
+                            toast(context, res.errorMessage ?? 'Impossible de passer l\'appel');
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.phone_outlined, size: 18, color: Pal.cobalt),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final launcher = context.read<ContactLauncher?>();
+                          final s = context.read<AppStore>();
+                          final message = (a.nextDue != null && rest > 0)
+                              ? MessageTemplates.echeanceApprenti(
+                                  apprenti: a.name,
+                                  dueDate: a.nextDue!,
+                                  amount: rest,
+                                  atelier: s.atelierName,
+                                )
+                              : null;
+                          final res = await launcher?.whatsapp(a.phone, body: message);
+                          if (res != null && !res.success && context.mounted) {
+                            toast(context, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.chat_outlined, size: 18, color: Color(0xFF25D366)),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final launcher = context.read<ContactLauncher?>();
+                          final s = context.read<AppStore>();
+                          final message = (a.nextDue != null && rest > 0)
+                              ? MessageTemplates.echeanceApprenti(
+                                  apprenti: a.name,
+                                  dueDate: a.nextDue!,
+                                  amount: rest,
+                                  atelier: s.atelierName,
+                                )
+                              : null;
+                          final res = await launcher?.sms(a.phone, body: message);
+                          if (res != null && !res.success && context.mounted) {
+                            toast(context, res.errorMessage ?? 'Impossible d\'ouvrir les SMS');
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.sms_outlined, size: 18, color: Pal.slate),
+                        ),
+                      ),
+                    ],
+                  ),
                 Text('Formation débutée le ${fmtDate(a.startDate)}', style: const TextStyle(color: Pal.slate, fontSize: 12)),
               ]),
             ),

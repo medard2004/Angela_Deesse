@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import '../ui.dart';
+import '../data/services/contact_launcher.dart';
+import '../data/utils/message_templates.dart';
 
 /// Modèle de données pour l'écran de reçu animé.
 class ReceiptData {
@@ -157,8 +159,20 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
     super.dispose();
   }
 
-  void _shareWhatsApp() {
-    toast(context, 'Reçu prêt pour envoi WhatsApp au ${widget.data.beneficiaryPhone.isNotEmpty ? widget.data.beneficiaryPhone : widget.data.beneficiaryName}');
+  Future<void> _shareWhatsApp() async {
+    final launcher = context.read<ContactLauncher?>();
+    final s = context.read<AppStore?>();
+    final atelier = s?.atelierName ?? widget.data.atelierName;
+    final message = MessageTemplates.recu(data: widget.data, atelier: atelier);
+
+    if (launcher != null) {
+      final res = await launcher.whatsapp(widget.data.beneficiaryPhone, body: message);
+      if (!res.success && mounted) {
+        toast(context, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
+      }
+    } else {
+      toast(context, 'Reçu prêt pour envoi WhatsApp au ${widget.data.beneficiaryPhone.isNotEmpty ? widget.data.beneficiaryPhone : widget.data.beneficiaryName}');
+    }
   }
 
   void _downloadReceipt() {
