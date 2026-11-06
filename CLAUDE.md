@@ -355,3 +355,12 @@ Côté serveur (Laravel) :
   - Lien « Code d'accès oublié ? » sur l'écran de déverrouillage : saisie du code de récupération (soumise aux mêmes paliers d'échecs) permettant de réinitialiser le PIN sans perte de données.
   - Aucune réinitialisation destructrice locale. Sans PIN ni code de récupération, affiche un message d'orientation vers le support.
   - **Question ouverte pour la suite** : procédure de récupération sans code après la mise en place de la synchronisation (réémission d'une clé d'appareil ou validation administrative côté serveur Laravel).
+
+### Gel du Schéma Drift v1 (`tag: schema-v1-frozen`)
+- **Règle absolue d'évolution du schéma** :
+  - Le schéma v1 (`drift_schemas/drift_schema_v1.json`) est **strictement gelé** et ne doit plus être modifié.
+  - À partir du tag `schema-v1-frozen`, toute modification de table (ajout de colonne, nouvelle table, index) impose d'incrémenter `schemaVersion` (`schemaVersion + 1`).
+  - Chaque incrément de schéma doit faire l'objet d'une migration écrite dans `AppDatabase.migration` ET testée à partir du dump JSON précédent via la suite de tests (`test/db/schema_v1_frozen_test.dart`).
+- **Signature et Release Android** :
+  - Configuration de signature via `android/key.properties` (exclu par `.gitignore`) avec fallback debug explicite.
+  - Procédure de compilation et conservation de clé privée documentées dans `docs/release.md`.

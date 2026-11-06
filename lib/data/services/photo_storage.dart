@@ -35,9 +35,18 @@ enum PhotoSource { camera, gallery }
 
 /// Interface de gestion du stockage des photos de l'atelier.
 abstract class PhotoStorage {
-  static const double maxWidth = 1600;
-  static const double maxHeight = 1600;
-  static const int imageQuality = 80;
+  static const double maxWidth = 1280;
+  static const double maxHeight = 1280;
+  static const int imageQuality = 75;
+
+  /// Largeur maximale configurable pour la compression
+  double get targetMaxWidth => maxWidth;
+
+  /// Hauteur maximale configurable pour la compression
+  double get targetMaxHeight => maxHeight;
+
+  /// Qualité JPEG configurable (0-100)
+  int get targetImageQuality => imageQuality;
 
   /// Sélectionne une photo (appareil photo ou galerie), la compresse et la stocke.
   Future<PickedPhoto?> pick(PhotoSource source);
@@ -58,6 +67,9 @@ class DefaultPhotoStorage implements PhotoStorage {
     ImagePicker? picker,
     Future<Directory> Function()? getBaseDir,
     ExternalActionTracker? tracker,
+    this.targetMaxWidth = PhotoStorage.maxWidth,
+    this.targetMaxHeight = PhotoStorage.maxHeight,
+    this.targetImageQuality = PhotoStorage.imageQuality,
   })  : _picker = picker ?? ImagePicker(),
         _getBaseDir = getBaseDir ?? getApplicationDocumentsDirectory,
         _tracker = tracker;
@@ -65,6 +77,13 @@ class DefaultPhotoStorage implements PhotoStorage {
   final ImagePicker _picker;
   final Future<Directory> Function() _getBaseDir;
   final ExternalActionTracker? _tracker;
+
+  @override
+  final double targetMaxWidth;
+  @override
+  final double targetMaxHeight;
+  @override
+  final int targetImageQuality;
 
   Future<Directory> _getPhotosDir() async {
     final baseDir = await _getBaseDir();
@@ -89,9 +108,9 @@ class DefaultPhotoStorage implements PhotoStorage {
     final imageSource = source == PhotoSource.camera ? ImageSource.camera : ImageSource.gallery;
     Future<XFile?> pickAction() => _picker.pickImage(
           source: imageSource,
-          maxWidth: PhotoStorage.maxWidth,
-          maxHeight: PhotoStorage.maxHeight,
-          imageQuality: PhotoStorage.imageQuality,
+          maxWidth: targetMaxWidth,
+          maxHeight: targetMaxHeight,
+          imageQuality: targetImageQuality,
         );
 
     final xFile = _tracker != null

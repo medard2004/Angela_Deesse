@@ -602,14 +602,14 @@ class _ReceiptPaperContent extends StatelessWidget {
                   const SizedBox(height: 8),
 
                   // Pied de ticket : code barres / remerciement discret
-                  const Column(
+                  Column(
                     children: [
-                      _BarcodeArt(),
-                      SizedBox(height: 4),
+                      const _BarcodeArt(),
+                      const SizedBox(height: 4),
                       Text(
-                        'Merci pour votre confiance · Angela Dress',
+                        'Merci pour votre confiance · ${context.watch<AppStore>().atelierName}',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Pal.slate, fontSize: 9.5),
+                        style: const TextStyle(color: Pal.slate, fontSize: 9.5),
                       ),
                     ],
                   ),

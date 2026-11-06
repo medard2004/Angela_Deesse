@@ -121,7 +121,7 @@ void main() {
         balance: 15000,
         atelier: 'Atelier Angela',
       );
-      expect(msgPrete, contains('Bonjour Afiwa, votre commande « Boubou Bazin » est prête à l\'atelier Atelier Angela.'));
+      expect(msgPrete, contains('Bonjour Afiwa, votre commande « Boubou Bazin » est prête (Atelier Angela).'));
       expect(msgPrete, contains('Reste à payer : 15 000 FCFA.'));
       expect(msgPrete, isNot(contains('Mme')));
 
@@ -161,7 +161,7 @@ void main() {
         balance: 35000,
         atelier: 'Atelier Angela',
       );
-      expect(msgSolde, contains('Bonjour Edem, rappel concernant votre solde restant de 35 000 FCFA à l\'atelier Atelier Angela.'));
+      expect(msgSolde, contains('Bonjour Edem, rappel concernant votre solde restant de 35 000 FCFA (Atelier Angela).'));
 
       // 3.5 Échéance apprenti
       final msgApprenti = MessageTemplates.echeanceApprenti(

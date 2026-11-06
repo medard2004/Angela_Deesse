@@ -172,6 +172,14 @@ class _LockScreenState extends State<LockScreen> {
       }
     } else if (widget.mode == LockMode.create) {
       if (_step == 0) {
+        if (isTrivialPin(pin)) {
+          HapticFeedback.heavyImpact();
+          setState(() {
+            _entry = '';
+            _errorMessage = 'Code trop simple, choisissez-en un autre';
+          });
+          return;
+        }
         setState(() {
           _firstEntry = pin;
           _entry = '';
@@ -225,6 +233,14 @@ class _LockScreenState extends State<LockScreen> {
           });
         }
       } else if (_step == 1) {
+        if (isTrivialPin(pin)) {
+          HapticFeedback.heavyImpact();
+          setState(() {
+            _entry = '';
+            _errorMessage = 'Code trop simple, choisissez-en un autre';
+          });
+          return;
+        }
         setState(() {
           _firstEntry = pin;
           _entry = '';

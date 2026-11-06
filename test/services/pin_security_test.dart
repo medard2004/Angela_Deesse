@@ -42,15 +42,20 @@ void main() {
       final initialStatus = await service.getPinStatus();
       expect(initialStatus.status, PinStatus.unconfigured);
 
-      // Création du PIN
-      final recoveryCode = await service.createPin('1234');
+      // Rejet des codes triviaux
+      for (final trivial in ['0000', '1111', '1234', '4321', '1212', '2580', '0852']) {
+        expect(() => service.createPin(trivial), throwsArgumentError);
+      }
+
+      // Création du PIN robuste
+      final recoveryCode = await service.createPin('4826');
       expect(recoveryCode, matches(RegExp(r'^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$')));
 
       final configuredStatus = await service.getPinStatus();
       expect(configuredStatus.status, PinStatus.configured);
 
       // Vérification PIN correct
-      final okResult = await service.verifyPin('1234');
+      final okResult = await service.verifyPin('4826');
       expect(okResult.isSuccess, isTrue);
 
       // Vérification mauvais code
@@ -60,22 +65,22 @@ void main() {
       expect(badResult.failedAttempts, 1);
 
       // Changement de code : ancien requis
-      final failChange = await service.changePin(oldPin: '9999', newPin: '5678');
+      final failChange = await service.changePin(oldPin: '9999', newPin: '7391');
       expect(failChange.success, isFalse);
       expect(failChange.message, contains('Ancien code incorrect'));
 
       // Changement de code valide
-      final okChange = await service.changePin(oldPin: '1234', newPin: '5678');
+      final okChange = await service.changePin(oldPin: '4826', newPin: '7391');
       expect(okChange.success, isTrue);
       expect(okChange.newRecoveryCode, isNotNull);
 
       // L'ancien ne marche plus, le nouveau marche
-      expect((await service.verifyPin('1234')).isSuccess, isFalse);
-      expect((await service.verifyPin('5678')).isSuccess, isTrue);
+      expect((await service.verifyPin('4826')).isSuccess, isFalse);
+      expect((await service.verifyPin('7391')).isSuccess, isTrue);
     });
 
     test('2. Paliers de verrouillage, persistance du compteur et remise à zéro au succès', () async {
-      await service.createPin('4321');
+      await service.createPin('4826');
 
       // 4 premiers échecs : pas de verrou
       for (var i = 1; i <= 4; i++) {
@@ -92,7 +97,7 @@ void main() {
       expect(r5.lockoutRemaining?.inSeconds, 30);
 
       // Pendant le verrou, un nouvel essai est rejeté immédiatement
-      final rLocked = await service.verifyPin('4321');
+      final rLocked = await service.verifyPin('4826');
       expect(rLocked.isLocked, isTrue);
 
       // Avancer le temps de 31s
@@ -106,13 +111,13 @@ void main() {
 
       // Avancer le temps de 61s et tester un succès -> remise à zéro
       currentTime = currentTime.add(const Duration(seconds: 61));
-      final rSuccess = await service.verifyPin('4321');
+      final rSuccess = await service.verifyPin('4826');
       expect(rSuccess.isSuccess, isTrue);
       expect(await service.getFailedAttempts(), 0);
     });
 
     test('3. Le compteur survit à une fermeture (nouvelle instance du service)', () async {
-      await service.createPin('1111');
+      await service.createPin('7391');
 
       // 3 échecs avec service 1
       await service.verifyPin('0000');
@@ -138,7 +143,7 @@ void main() {
     });
 
     test('4. L\'incrément précède la comparaison (simulation de crash entre les deux)', () async {
-      await service.createPin('2222');
+      await service.createPin('3915');
 
       // Hook pour crasher au moment exact après l'enregistrement mais avant le calcul de hash
       service.onBeforeHashComparison = () {
@@ -154,7 +159,7 @@ void main() {
     });
 
     test('5. Garde d\'horloge : reculer l\'horloge ne raccourcit pas le verrou', () async {
-      await service.createPin('3333');
+      await service.createPin('6294');
 
       // Déclencher le verrou à 5 échecs à 10:00:00
       for (var i = 0; i < 5; i++) {
@@ -176,7 +181,7 @@ void main() {
     });
 
     test('6. Code de récupération : utilisable pour restaurer, essais limités, formats tolérants', () async {
-      final recoveryCode = await service.createPin('1234');
+      final recoveryCode = await service.createPin('8147');
 
       // Mauvais code de récupération
       final badRec = await service.verifyRecoveryCode('XXXX-XXXX-XXXX');
@@ -193,14 +198,14 @@ void main() {
     });
 
     test('7. Aucun secret en clair dans le stockage (ni PIN, ni code de récupération)', () async {
-      final recCode = await service.createPin('7890');
+      final recCode = await service.createPin('8147');
 
       final dumpValues = storage.dump.values.join(' ');
       final dumpKeys = storage.dump.keys.join(' ');
 
       // Le PIN en clair n'apparaît nulle part
-      expect(dumpValues.contains('7890'), isFalse);
-      expect(dumpKeys.contains('7890'), isFalse);
+      expect(dumpValues.contains('8147'), isFalse);
+      expect(dumpKeys.contains('8147'), isFalse);
 
       // Le code de récupération en clair n'apparaît nulle part
       expect(dumpValues.contains(recCode), isFalse);
@@ -273,7 +278,7 @@ void main() {
     });
 
     testWidgets('11. Test Widget : LockScreen refuse un code arbitre et valide le bon PIN', (tester) async {
-      await service.createPin('2580');
+      await service.createPin('4826');
       final tracker = ExternalActionTracker();
       final lockManager = AppLockManager(
         securityService: service,
@@ -326,7 +331,43 @@ void main() {
       expect(find.text("Code d'accès incorrect"), findsOneWidget);
       expect(unlocked, isFalse);
 
-      // Saisir le bon code '2580'
+      // Saisir le bon code '4826'
+      await tester.tap(find.text('4'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('8'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('2'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('6'));
+      await tester.pumpAndSettle();
+
+      // Le LockScreen s'est fermé avec succès
+      expect(find.text('Entrez votre code'), findsNothing);
+      expect(unlocked, isTrue);
+    });
+
+    testWidgets('12. Test Widget : Création de PIN refuse les codes triviaux', (tester) async {
+      final tracker = ExternalActionTracker();
+      final lockManager = AppLockManager(
+        securityService: service,
+        tracker: tracker,
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<PinSecurityService>.value(value: service),
+            Provider<AppLockManager>.value(value: lockManager),
+          ],
+          child: const MaterialApp(
+            home: LockScreen(mode: LockMode.create),
+          ),
+        ),
+      );
+
+      expect(find.text('Créer votre code secret'), findsOneWidget);
+
+      // Taper 2580 (trivial)
       await tester.tap(find.text('2'));
       await tester.pump(const Duration(milliseconds: 50));
       await tester.tap(find.text('5'));
@@ -336,9 +377,9 @@ void main() {
       await tester.tap(find.text('0'));
       await tester.pumpAndSettle();
 
-      // Le LockScreen s'est fermé avec succès
-      expect(find.text('Entrez votre code'), findsNothing);
-      expect(unlocked, isTrue);
+      // Refusé avec message
+      expect(find.text('Code trop simple, choisissez-en un autre'), findsOneWidget);
+      expect(find.text('Confirmez votre code'), findsNothing);
     });
   });
 }

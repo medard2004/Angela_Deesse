@@ -122,6 +122,30 @@ bool constantTimeEquals(List<int> a, List<int> b) {
 /// Alphabet Crockford Base32 sans ambiguïté visuelle (sans 0, 1, I, L, O, U).
 const String crockfordAlphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
+/// Vérifie si un code PIN à 4 chiffres est trivial.
+/// Sont considérés comme triviaux et rejetés :
+/// 1. Les 4 chiffres identiques : 0000, 1111, 2222, 3333, 4444, 5555, 6666, 7777, 8888, 9999.
+/// 2. Les suites croissantes : 0123, 1234, 2345, 3456, 4567, 5678, 6789.
+/// 3. Les suites décroissantes : 3210, 4321, 5432, 6543, 7654, 8765, 9876.
+/// 4. Les paires répétées : 0101, 1212, 2323, 1010, etc. (pin[0] == pin[2] && pin[1] == pin[3]).
+/// 5. La colonne centrale du pavé numérique téléphonique : 2580 et 0852.
+bool isTrivialPin(String pin) {
+  if (pin.length != 4) return false;
+  // 1. Chiffres identiques
+  if (pin[0] == pin[1] && pin[1] == pin[2] && pin[2] == pin[3]) return true;
+  // 2. Suites croissantes
+  const ascending = '0123456789';
+  if (ascending.contains(pin)) return true;
+  // 3. Suites décroissantes
+  const descending = '9876543210';
+  if (descending.contains(pin)) return true;
+  // 4. Paires répétées
+  if (pin[0] == pin[2] && pin[1] == pin[3]) return true;
+  // 5. Colonne centrale
+  if (pin == '2580' || pin == '0852') return true;
+  return false;
+}
+
 /// Génère un code de récupération de 12 caractères formaté `XXXX-XXXX-XXXX`.
 String generateRecoveryCode() {
   final rng = Random.secure();
@@ -271,13 +295,23 @@ class PinSecurityService {
     if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
       throw ArgumentError('Le code PIN doit comporter exactement 4 chiffres.');
     }
+    if (isTrivialPin(pin)) {
+      throw ArgumentError('Code trop simple, choisissez-en un autre.');
+    }
 
     final pinSalt = generateSalt();
+    final sw = Stopwatch()..start();
     final pinHash = await _deriver(
       secret: pin,
       salt: pinSalt,
       iterations: _iterations,
     );
+    sw.stop();
+    assert(() {
+      // ignore: avoid_print
+      print('[SECURITY] Durée dérivation PBKDF2 PIN ($_iterations itér.) : ${sw.elapsedMilliseconds} ms');
+      return true;
+    }());
 
     final rawRecovery = customRecoveryCode ?? generateRecoveryCode();
     final normalizedRec = normalizeRecoveryCode(rawRecovery);
