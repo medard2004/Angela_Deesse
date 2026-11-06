@@ -313,6 +313,11 @@ class SystemReminderService {
     );
   }
 
+  /// Liste des requêtes de notification en attente auprès du système.
+  Future<List<PendingNotificationRequest>> pendingNotificationRequests() async {
+    return await plugin.pendingNotificationRequests();
+  }
+
   void dispose() {
     _debounceTimer?.cancel();
   }

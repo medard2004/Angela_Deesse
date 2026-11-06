@@ -132,6 +132,7 @@ class AppStore extends ChangeNotifier {
   bool get notifFitting => _settingsMap[kSettingNotifFitting] != 'false';
   bool get notifPayments => _settingsMap[kSettingNotifPayments] != 'false';
   bool get notifLate => _settingsMap[kSettingNotifLate] != 'false';
+  bool get reminderGuideDismissed => _settingsMap[kSettingReminderGuideDismissed] == 'true';
 
   int get monthTotal => _financeSummary?.monthTotal ?? 0;
   List<MonthCashFlow> get last6Months => _financeSummary?.last6Months ?? [];
@@ -183,6 +184,13 @@ class AppStore extends ChangeNotifier {
     await _settingsRepo.set(kSettingNotifLate, str);
     _settingsMap[kSettingNotifLate] = str;
     _triggerReminderReschedule();
+    notifyListeners();
+  }
+
+  Future<void> setReminderGuideDismissed(bool v) async {
+    final str = v ? 'true' : 'false';
+    await _settingsRepo.set(kSettingReminderGuideDismissed, str);
+    _settingsMap[kSettingReminderGuideDismissed] = str;
     notifyListeners();
   }
 

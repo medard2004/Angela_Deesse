@@ -1,6 +1,7 @@
 import '../core/app_brand.dart';
 import '../ui.dart';
 import 'lock_screen.dart';
+import 'reminder_guide_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.onMenu});
@@ -25,6 +26,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     ctrl.dispose();
     if (v != null) s.setAtelierName(v);
+  }
+
+  Future<void> _toggleReminder(AppStore s, Future<void> Function(bool) setVal, bool v) async {
+    await setVal(v);
+    if (v && !s.reminderGuideDismissed && mounted) {
+      await s.setReminderGuideDismissed(true);
+      final open = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Pour que vos rappels sonnent bien', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          content: const Text(
+            'Certains téléphones (Tecno, Infinix, Xiaomi...) coupent les rappels lorsque l\'écran est éteint.\n\nSouhaitez-vous voir comment régler votre téléphone en 1 minute ?',
+            style: TextStyle(fontSize: 13.5, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Plus tard', style: TextStyle(color: Pal.slate)),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: Pal.cobalt),
+              child: const Text('Voir le guide', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+      if (open == true && mounted) {
+        push(context, const ReminderGuideScreen());
+      }
+    }
   }
 
   Widget _switch(IconData icon, String title, String sub, bool v, ValueChanged<bool> on) => ListTile(
@@ -76,10 +108,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Panel(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(children: [
-              _switch(Icons.local_shipping_outlined, 'Livraisons', 'Deux jours avant et le jour même', s.notifDelivery, (v) => s.setNotifDelivery(v)),
-              _switch(Icons.schedule_rounded, 'Essayages', 'La veille et le matin', s.notifFitting, (v) => s.setNotifFitting(v)),
-              _switch(Icons.account_balance_wallet_outlined, 'Paiements', 'Clients et apprentis en attente', s.notifPayments, (v) => s.setNotifPayments(v)),
-              _switch(Icons.warning_amber_rounded, 'Commandes en retard', 'Alerte chaque matin', s.notifLate, (v) => s.setNotifLate(v)),
+              _switch(Icons.local_shipping_outlined, 'Livraisons', 'Deux jours avant et le jour même', s.notifDelivery, (v) => _toggleReminder(s, s.setNotifDelivery, v)),
+              _switch(Icons.schedule_rounded, 'Essayages', 'La veille et le matin', s.notifFitting, (v) => _toggleReminder(s, s.setNotifFitting, v)),
+              _switch(Icons.account_balance_wallet_outlined, 'Paiements', 'Clients et apprentis en attente', s.notifPayments, (v) => _toggleReminder(s, s.setNotifPayments, v)),
+              _switch(Icons.warning_amber_rounded, 'Commandes en retard', 'Alerte chaque matin', s.notifLate, (v) => _toggleReminder(s, s.setNotifLate, v)),
+              const Divider(height: 1, indent: 14, endIndent: 14, color: Pal.line),
+              ListTile(
+                onTap: () => push(context, const ReminderGuideScreen()),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                leading: const _Icon(Icons.help_outline_rounded),
+                title: const Text('Pour que les rappels sonnent', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                subtitle: const Text('Guide de réglages et test de sonnerie', style: TextStyle(color: Pal.slate, fontSize: 11.5)),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Pal.slate, size: 20),
+              ),
             ]),
           ),
         ),

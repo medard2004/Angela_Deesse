@@ -9,6 +9,7 @@ const String kSettingNotifDelivery = 'notif_delivery';
 const String kSettingNotifFitting = 'notif_fitting';
 const String kSettingNotifPayments = 'notif_payments';
 const String kSettingNotifLate = 'notif_late';
+const String kSettingReminderGuideDismissed = 'reminder_guide_dismissed';
 
 const String kDefaultAtelierName = AppBrand.defaultAtelierName;
 const bool kDefaultNotifDelivery = true;
