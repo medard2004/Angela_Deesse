@@ -27,6 +27,8 @@ class AlarmRingingScreen extends StatefulWidget {
   final VoidCallback? onDismiss;
   final VoidCallback? onSnooze;
 
+  static bool isAlarmShowing = false;
+
   @override
   State<AlarmRingingScreen> createState() => _AlarmRingingScreenState();
 }
@@ -43,6 +45,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> with SingleTick
   @override
   void initState() {
     super.initState();
+    AlarmRingingScreen.isAlarmShowing = true;
     _remainingSeconds = widget.timeoutSeconds;
     _currentTime = DateFormat('HH:mm').format(DateTime.now());
 
@@ -90,6 +93,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> with SingleTick
 
   @override
   void dispose() {
+    AlarmRingingScreen.isAlarmShowing = false;
     _clockTimer?.cancel();
     _countdownTimer?.cancel();
     _vibrationTimer?.cancel();

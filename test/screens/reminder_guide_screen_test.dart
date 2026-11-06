@@ -92,6 +92,7 @@ void main() {
     addTearDown(db.close);
     final fakePlugin = FakeFlutterLocalNotificationsPlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
     final store = AppStore(db: db);
 
     await tester.pumpWidget(
@@ -125,6 +126,7 @@ void main() {
     addTearDown(db.close);
     final fakePlugin = FakeFlutterLocalNotificationsPlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
     final store = AppStore(db: db);
 
     await tester.pumpWidget(
@@ -152,6 +154,7 @@ void main() {
     addTearDown(db.close);
     final fakePlugin = FakeFlutterLocalNotificationsPlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
     final store = AppStore(db: db);
 
     await tester.pumpWidget(
@@ -190,6 +193,7 @@ void main() {
     addTearDown(db.close);
     final fakePlugin = FakeFlutterLocalNotificationsPlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
     final store = AppStore(db: db);
 
     await tester.pumpWidget(

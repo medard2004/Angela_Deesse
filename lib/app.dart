@@ -40,21 +40,25 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
       final id = event['id'] as int?;
 
       if (isAlarm) {
-        _navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => AlarmRingingScreen(
-              title: title,
-              body: body,
-              notificationId: id,
+        if (!AlarmRingingScreen.isAlarmShowing) {
+          _navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              fullscreenDialog: true,
+              builder: (_) => AlarmRingingScreen(
+                title: title,
+                body: body,
+                notificationId: id,
+              ),
             ),
-          ),
-        );
+          );
+        }
       } else {
+        final overlay = _navigatorKey.currentState?.overlay;
         final ctx = _navigatorKey.currentContext;
         if (ctx != null) {
           InAppNotificationBanner.show(
             ctx,
+            overlayState: overlay,
             title: title,
             body: body,
             onTap: () {

@@ -38,6 +38,15 @@ class _FakePlugin extends Fake implements FlutterLocalNotificationsPlugin {
       'payload': payload,
     });
   }
+
+  @override
+  Future<void> show({
+    required int id,
+    String? title,
+    String? body,
+    NotificationDetails? notificationDetails,
+    String? payload,
+  }) async {}
 }
 
 void main() {
@@ -56,6 +65,7 @@ void main() {
 
     final fakePlugin = _FakePlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -96,6 +106,7 @@ void main() {
 
     final fakePlugin = _FakePlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -150,6 +161,7 @@ void main() {
 
     final fakePlugin = _FakePlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -203,6 +215,7 @@ void main() {
 
     final fakePlugin = _FakePlugin();
     final reminderService = SystemReminderService(plugin: fakePlugin);
+    addTearDown(reminderService.dispose);
 
     await tester.pumpWidget(
       MultiProvider(

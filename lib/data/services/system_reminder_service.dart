@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -78,10 +78,10 @@ class SystemReminderService {
   final FlutterLocalNotificationsPlugin plugin;
   final AlertEngine alertEngine;
 
-  static const String kAlarmChannelId = 'alarmes_plein_ecran_v1';
-  static const String kAlarmChannelName = 'Alarmes d\'atelier (Plein écran)';
+  static const String kAlarmChannelId = 'alarmes_douces_v2';
+  static const String kAlarmChannelName = 'Alarmes d\'atelier (Mélodie douce)';
   static const String kAlarmChannelDesc =
-      'Alarmes sonores continues et plein écran pour les essayages et livraisons';
+      'Sonnerie douce et plein écran pour les essayages et livraisons';
 
   static const String kStandardChannelId = 'notifications_standard_v1';
   static const String kStandardChannelName = 'Notifications simples';
@@ -100,8 +100,9 @@ class SystemReminderService {
       StreamController<Map<String, dynamic>>.broadcast();
 
   Timer? _debounceTimer;
+  final List<Timer> _activeTimers = [];
 
-  /// Détails pour les alarmes plein écran (sonnerie & vibration en continu jusqu'à 60s).
+  /// Détails pour les alarmes plein écran (sonnerie douce & vibration en continu jusqu'à 60s).
   static NotificationDetails get alarmNotificationDetails => NotificationDetails(
         android: AndroidNotificationDetails(
           kAlarmChannelId,
@@ -112,6 +113,8 @@ class SystemReminderService {
           audioAttributesUsage: AudioAttributesUsage.alarm,
           category: AndroidNotificationCategory.alarm,
           fullScreenIntent: true,
+          sound: const RawResourceAndroidNotificationSound('gentle_alarm'),
+          playSound: true,
           additionalFlags: Int32List.fromList(<int>[4]), // FLAG_INSISTENT : sonne en boucle
           timeoutAfter: 60000, // 1 minute max (60 secondes)
           icon: 'ic_stat_notification',
@@ -197,6 +200,36 @@ class SystemReminderService {
       },
       onDidReceiveBackgroundNotificationResponse: notificationActionBackgroundHandler,
     );
+
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final androidImpl = plugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        if (androidImpl != null) {
+          await androidImpl.createNotificationChannel(
+            const AndroidNotificationChannel(
+              kAlarmChannelId,
+              kAlarmChannelName,
+              description: kAlarmChannelDesc,
+              importance: Importance.max,
+              sound: RawResourceAndroidNotificationSound('gentle_alarm'),
+              playSound: true,
+              audioAttributesUsage: AudioAttributesUsage.alarm,
+              enableVibration: true,
+            ),
+          );
+          await androidImpl.createNotificationChannel(
+            const AndroidNotificationChannel(
+              kStandardChannelId,
+              kStandardChannelName,
+              description: kStandardChannelDesc,
+              importance: Importance.high,
+              enableVibration: true,
+            ),
+          );
+        }
+      } catch (_) {}
+    }
   }
 
   /// Vérifie si l'application dispose de l'autorisation de poster des notifications.
@@ -313,6 +346,11 @@ class SystemReminderService {
         ? AndroidScheduleMode.exactAllowWhileIdle
         : AndroidScheduleMode.inexactAllowWhileIdle;
 
+    for (final t in _activeTimers) {
+      t.cancel();
+    }
+    _activeTimers.clear();
+
     for (final g in grouped) {
       final tzTime = tz.TZDateTime.from(g.scheduledAt, tz.local);
       final payload = jsonEncode({
@@ -338,6 +376,48 @@ class SystemReminderService {
     }
   }
 
+  void _triggerInAppForegroundAlert({
+    required int id,
+    required String title,
+    required String body,
+    required bool isAlarm,
+    required NotificationDetails details,
+    required String payload,
+    List<String> keys = const [],
+    String type = kPayloadTypePlan,
+  }) async {
+    final state = WidgetsBinding.instance.lifecycleState;
+    final isForeground = state == null || state == AppLifecycleState.resumed;
+    if (!isForeground) return;
+
+    if (!isAlarm) {
+      // Pour une notification standard in-app : annuler le push OS pour ne pas doubler avec le bandeau
+      try {
+        await plugin.cancel(id: id);
+      } catch (_) {}
+    } else {
+      // Pour une alarme réveil in-app : déclencher l'alerte sonore native
+      try {
+        await plugin.show(
+          id: id,
+          title: title,
+          body: body,
+          notificationDetails: details,
+          payload: payload,
+        );
+      } catch (_) {}
+    }
+
+    inAppEventStream.add({
+      'type': type,
+      'title': title,
+      'body': body,
+      'id': id,
+      'keys': keys,
+      'isAlarm': isAlarm,
+    });
+  }
+
   /// Planifie un test de sonnerie ou d'alarme plein écran.
   Future<void> scheduleRingerTest({
     required Duration delay,
@@ -346,12 +426,15 @@ class SystemReminderService {
     final testId = (DateTime.now().millisecondsSinceEpoch ~/ 1000) & 0x7FFFFFFF;
     final scheduledTime = tz.TZDateTime.now(tz.local).add(delay);
 
+    final title = asAlarm ? 'Test de sonnerie ${AppBrand.appName}' : 'Notification ${AppBrand.appName}';
+    final body = asAlarm
+        ? 'Alarme plein écran avec sonnerie douce jusqu\'à confirmation.'
+        : 'Notification standard d\'alerte de production.';
+
     final payload = jsonEncode({
       'type': kPayloadTypeTest,
-      'title': asAlarm ? 'Test de sonnerie ${AppBrand.appName}' : 'Notification ${AppBrand.appName}',
-      'body': asAlarm
-          ? 'Alarme plein écran avec sonnerie continue jusqu\'à confirmation.'
-          : 'Notification standard d\'alerte de production.',
+      'title': title,
+      'body': body,
       'id': testId,
       'isAlarm': asAlarm,
     });
@@ -365,15 +448,29 @@ class SystemReminderService {
 
     await plugin.zonedSchedule(
       id: testId,
-      title: asAlarm ? 'Test de sonnerie ${AppBrand.appName}' : 'Notification ${AppBrand.appName}',
-      body: asAlarm
-          ? 'Alarme plein écran avec sonnerie continue jusqu\'à confirmation.'
-          : 'Notification standard d\'alerte de production.',
+      title: title,
+      body: body,
       scheduledDate: scheduledTime,
       notificationDetails: details,
       androidScheduleMode: scheduleMode,
       payload: payload,
     );
+
+    // Minuteur au premier plan : uniquement pour les tests de démonstration courts (<= 30s)
+    if (delay <= const Duration(seconds: 30)) {
+      final timer = Timer(delay, () {
+        _triggerInAppForegroundAlert(
+          id: testId,
+          title: title,
+          body: body,
+          isAlarm: asAlarm,
+          details: details,
+          payload: payload,
+          type: kPayloadTypeTest,
+        );
+      });
+      _activeTimers.add(timer);
+    }
   }
 
   /// Liste des requêtes de notification en attente auprès du système.
@@ -383,5 +480,9 @@ class SystemReminderService {
 
   void dispose() {
     _debounceTimer?.cancel();
+    for (final t in _activeTimers) {
+      t.cancel();
+    }
+    _activeTimers.clear();
   }
 }

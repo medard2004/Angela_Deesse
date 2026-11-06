@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import '../ui.dart';
 
 /// Bannière de notification élégante qui s'affiche en haut de l'écran
@@ -26,11 +27,21 @@ class InAppNotificationBanner extends StatefulWidget {
     required String body,
     VoidCallback? onTap,
     Duration duration = const Duration(seconds: 5),
+    OverlayState? overlayState,
   }) {
     _currentEntry?.remove();
     _currentEntry = null;
 
-    final overlay = Overlay.of(context);
+    final overlay = overlayState ??
+        Navigator.maybeOf(context)?.overlay ??
+        Overlay.maybeOf(context);
+    if (overlay == null) return;
+
+    try {
+      HapticFeedback.lightImpact();
+      SystemSound.play(SystemSoundType.alert);
+    } catch (_) {}
+
     late final OverlayEntry entry;
 
     entry = OverlayEntry(
