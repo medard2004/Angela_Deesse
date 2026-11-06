@@ -69,7 +69,7 @@ class _ApprenticeFormScreenState extends State<ApprenticeFormScreen> {
           openReceiptScreen(
             context,
             ReceiptData(
-              receiptNo: p.receiptNo.toString().padLeft(4, '0'),
+              receiptNo: 'APP-${p.receiptNo.toString().padLeft(4, '0')}',
               atelierName: store.atelierName,
               title: 'Reçu de versement apprenti',
               beneficiaryName: apprentice.name,

@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'dart:math' as math;
+import 'package:printing/printing.dart';
 import '../ui.dart';
 import '../data/services/contact_launcher.dart';
+import '../data/services/external_action_tracker.dart';
+import '../data/services/receipt_pdf_generator.dart';
 import '../data/utils/message_templates.dart';
 
 /// Modèle de données pour l'écran de reçu animé.
@@ -21,6 +25,9 @@ class ReceiptData {
     this.nextDueDate,
     this.stampText = 'VERSÉ',
     this.itemDetail,
+    this.isVoided = false,
+    this.voidedAt,
+    this.voidReason,
   });
 
   final String receiptNo;
@@ -38,6 +45,9 @@ class ReceiptData {
   final DateTime? nextDueDate;
   final String stampText;
   final String? itemDetail;
+  final bool isVoided;
+  final DateTime? voidedAt;
+  final String? voidReason;
 
   bool get isFullyPaid => remainingAmount <= 0;
 }
@@ -175,12 +185,63 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
     }
   }
 
-  void _downloadReceipt() {
-    toast(context, 'Reçu N° ${widget.data.receiptNo} enregistré dans Téléchargements (PDF)');
+  Future<void> _sharePdf() async {
+    final tracker = context.read<ExternalActionTracker?>();
+    try {
+      const generator = ReceiptPdfGenerator();
+      final bytes = await generator.generatePdf(widget.data);
+      final fileName = ReceiptPdfGenerator.buildFileName(widget.data);
+
+      File? tempFile;
+      try {
+        tempFile = await generator.saveToTemporary(widget.data, bytes);
+      } catch (_) {}
+
+      Future<bool> action() => Printing.sharePdf(
+            bytes: bytes,
+            filename: fileName,
+          );
+
+      if (tracker != null) {
+        await tracker.runExternal(action);
+      } else {
+        await action();
+      }
+
+      if (tempFile != null && await tempFile.exists()) {
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+      }
+    } catch (_) {
+      if (mounted) {
+        toast(context, 'Impossible de créer le reçu');
+      }
+    }
   }
 
-  void _printReceipt() {
-    toast(context, 'Connexion à l\'imprimante de reçus... Impression lancée !');
+  Future<void> _printReceipt() async {
+    final tracker = context.read<ExternalActionTracker?>();
+    try {
+      const generator = ReceiptPdfGenerator();
+      final bytes = await generator.generatePdf(widget.data);
+      final fileName = ReceiptPdfGenerator.buildFileName(widget.data);
+
+      Future<bool> action() => Printing.layoutPdf(
+            name: fileName,
+            onLayout: (_) async => bytes,
+          );
+
+      if (tracker != null) {
+        await tracker.runExternal(action);
+      } else {
+        await action();
+      }
+    } catch (_) {
+      if (mounted) {
+        toast(context, 'Impossible de créer le reçu');
+      }
+    }
   }
 
   @override
@@ -211,9 +272,9 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
             onPressed: _printReceipt,
           ),
           IconButton(
-            icon: const Icon(Icons.download_rounded),
-            tooltip: 'Télécharger',
-            onPressed: _downloadReceipt,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'PDF',
+            onPressed: _sharePdf,
           ),
           const SizedBox(width: 4),
         ],
@@ -364,9 +425,9 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                                 padding: const EdgeInsets.symmetric(horizontal: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               ),
-                              icon: const Icon(Icons.download_rounded, size: 18),
-                              label: const Text('Télécharger', maxLines: 1, overflow: TextOverflow.ellipsis),
-                              onPressed: _downloadReceipt,
+                              icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                              label: const Text('PDF', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              onPressed: _sharePdf,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -607,7 +668,7 @@ class _ReceiptPaperContent extends StatelessWidget {
                       const _BarcodeArt(),
                       const SizedBox(height: 4),
                       Text(
-                        'Merci pour votre confiance · ${context.watch<AppStore>().atelierName}',
+                        'Merci pour votre confiance · ${context.watch<AppStore?>()?.atelierName ?? data.atelierName}',
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Pal.slate, fontSize: 9.5),
                       ),

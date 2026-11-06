@@ -97,11 +97,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
 
       // Les deux boutons d'action sont affichés
-      expect(find.text('Télécharger'), findsOneWidget);
+      expect(find.text('PDF'), findsOneWidget);
       expect(find.text('WhatsApp'), findsOneWidget);
 
-      // Tester l'action Télécharger
-      await tester.tap(find.text('Télécharger'));
+      // Tester l'action PDF
+      await tester.tap(find.text('PDF'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Tester l'action WhatsApp

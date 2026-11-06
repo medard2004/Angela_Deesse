@@ -34,6 +34,9 @@ class OrderDetailScreen extends StatelessWidget {
         nextDueDate: o.deliveryDate,
         stampText: stamp,
         itemDetail: o.title,
+        isVoided: cp.isVoided,
+        voidedAt: cp.voidedAt,
+        voidReason: cp.voidReason,
       ),
     );
   }

@@ -30,13 +30,8 @@ Valeur apportée :
 - Écrans : accueil (tableau de bord), commandes (+ détail), clients et mesures (12 mesures + custom), apprentis (+ détail), reçus (`ReceiptScreen`), finances, modèles, galerie, verrouillage PIN, réglages.
 
 Ce qui est faux aujourd'hui :
-- Données volatiles (perdues à la fermeture).
-- Photos = identifiants simulés (`demo:1`), pas d'appareil photo ni de fichiers.
-- Boutons WhatsApp / SMS / appel = simple SnackBar.
-- Pas de vrai PDF.
-- `LockScreen` accepte n'importe quel code à 4 chiffres.
-- Interrupteurs de notifications purement visuels.
-- Aucune sauvegarde ni sync.
+- Synchronisation serveur (non commencée).
+- Rappels et notifications locales (traités dans un prompt séparé).
 
 ## 4. Principe directeur : offline-first
 
@@ -364,3 +359,22 @@ Côté serveur (Laravel) :
 - **Signature et Release Android** :
   - Configuration de signature via `android/key.properties` (exclu par `.gitignore`) avec fallback debug explicite.
   - Procédure de compilation et conservation de clé privée documentées dans `docs/release.md`.
+  - Identifiant d'application définitif : `com.digitalvision.angela_dress` (applicationId, namespace, MainActivity).
+
+### Tranche Reçus PDF & Impression Thermique (Partie B) — Terminée
+- **Service `ReceiptPdfGenerator`** (`lib/data/services/receipt_pdf_generator.dart`) :
+  - Génération 100 % locale sans réseau via `package:pdf: 3.12.0` et `package:printing: 5.14.3`.
+  - Format ticket thermique : rouleau 80 mm (`PdfPageFormat.roll80`), hauteur dynamique adaptée au contenu.
+  - Police TTF embarquée : `assets/fonts/Manrope-400.ttf` et `Manrope-700.ttf` intégrées via `pw.Font.ttf` et `pw.ThemeData.withFont`. Aucun caractère manquant ni carré : support complet des accents (`É`, `è`, `à`), apostrophes typographiques (`’`), tirets longs (`—`) et espaces fines.
+  - Données strictement immuables/figées : construit UNIQUEMENT à partir des champs figés du versement (`receiptNumber`, `amount`, `orderPriceAtPayment`/`totalFeeAtPayment`, `balanceAfter`, `paidAt`, `note`, `voidedAt`, `voidReason`) + `beneficiaryName`, `itemDetail`, `atelierName`. Jamais le solde courant.
+  - Tampons stricts :
+    - `VERSÉ` si `balanceAfter > 0`.
+    - `SOLDÉ` si `balanceAfter <= 0`.
+    - `ANNULÉ` avec date et motif si `isVoided == true`.
+  - Métadonnées du document : titre, auteur (nom d'atelier), créateur ('Angela Déesse'), date déterministe.
+  - Fichier temporaire standardisé et assaini : `Recu_CMD-0007_<nom-nettoye>.pdf` (sans accents, sans espaces, caractères alphanumériques et tirets uniquement) dans `getTemporaryDirectory()`. Aucun stockage en base, aucun fichier dans photos/, aucune entrée d'outbox.
+- **Intégration UI `ReceiptScreen`** (`lib/screens/receipt_screen.dart`) :
+  - Bouton « PDF » (AppBar et action inférieure) : génère le PDF et ouvre la feuille de partage système (`Printing.sharePdf`) sous la garde de `runExternal` (pas de verrouillage PIN intempestif au retour). Nettoyage du fichier temporaire après partage.
+  - Bouton « Imprimer » (AppBar) : ouvre la boîte de dialogue d'impression système (`Printing.layoutPdf`) sous la garde de `runExternal`.
+  - En cas d'erreur de génération, affichage d'un message non-bloquant « Impossible de créer le reçu » sans planter l'interface.
+  - Bouton texte « WhatsApp » conservé à l'identique.

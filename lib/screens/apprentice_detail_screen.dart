@@ -33,6 +33,9 @@ class ApprenticeDetailScreen extends StatelessWidget {
         nextDueDate: a.nextDue,
         stampText: stamp,
         itemDetail: 'Formation couture',
+        isVoided: p.isVoided,
+        voidedAt: p.voidedAt,
+        voidReason: p.voidReason,
       ),
     );
   }
