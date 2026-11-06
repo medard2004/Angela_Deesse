@@ -378,3 +378,17 @@ Côté serveur (Laravel) :
   - Bouton « Imprimer » (AppBar) : ouvre la boîte de dialogue d'impression système (`Printing.layoutPdf`) sous la garde de `runExternal`.
   - En cas d'erreur de génération, affichage d'un message non-bloquant « Impossible de créer le reçu » sans planter l'interface.
   - Bouton texte « WhatsApp » conservé à l'identique.
+
+### Tranche Identité de Marque Angela Déesse (Partie 0) — Terminée
+- **Nom officiel et cohérence globale** (`lib/core/app_brand.dart`) :
+  - Constante centrale `AppBrand.appName = 'Angela Déesse'` et `AppBrand.defaultAtelierName = 'Angela Déesse'`.
+  - Tout texte statique (titre de l'application, `onGenerateTitle`, libellé Android `android:label="@string/app_name"`, iOS `CFBundleDisplayName`) porte « Angela Déesse ».
+  - Tout texte dynamique lit `AppStore.atelierName` (`settings.atelier_name`), avec repli sur `AppBrand.defaultAtelierName`.
+  - Conservation stricte des identifiants techniques invisibles : `applicationId com.digitalvision.angela_dress` et package Dart `angela_dress` sont volontairement conservés pour ne pas casser l'identité de l'application Android ni le package local.
+  - Gabarits de messages unifiés avec la mention « chez {atelier} ».
+- **Unification des numéros de reçus** :
+  - Fonction unique `formatReceiptNumber(type, n)` dans `lib/core/format.dart` produisant `CMD-0001` et `APP-0001` sur tous les écrans, reçus PDF et messages.
+- **Identité visuelle de notification** :
+  - Ressource drawable vectorielle monochrome Android `ic_stat_notification` (blanc sur transparent) pour éviter les carrés blancs sous Android.
+  - Bouton contextuel WhatsApp ajouté sur chaque alerte dans `NotificationsScreen` via `ContactLauncher` et `MessageTemplates`.
+

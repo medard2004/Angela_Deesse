@@ -2,11 +2,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/app_brand.dart';
 import '../core/format.dart';
 import '../core/motion.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 import '../data/services/photo_storage.dart';
+import '../data/store.dart';
 
 Future<T?> push<T>(BuildContext c, Widget w) =>
     Navigator.of(c).push<T>(FadePageRoute<T>(builder: (_) => w));
@@ -54,7 +56,7 @@ class SplashScope extends InheritedWidget {
 
 /// Calcule avec précision la position centrale (X, Y) du logo dans l'AppHeader
 /// en fonction des dimensions réelles de l'écran et du facteur d'échelle de police.
-Offset computeAppBarLogoCenter(BuildContext context, {String label = 'Angela Déesse'}) {
+Offset computeAppBarLogoCenter(BuildContext context, {String label = AppBrand.appName}) {
   final mediaQuery = MediaQuery.of(context);
   final screenWidth = mediaQuery.size.width;
   final safeTop = mediaQuery.padding.top;
@@ -88,7 +90,7 @@ class BrandMark extends StatelessWidget {
     super.key,
     this.height = 22,
     this.withName = true,
-    this.label = 'Angela Déesse',
+    this.label = AppBrand.appName,
     this.heroTag,
   });
   final double height;
@@ -215,7 +217,8 @@ class AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayTitle = isHome ? 'Angela Déesse' : (title ?? 'Angela Déesse');
+    final atelier = context.watch<AppStore?>()?.atelierName ?? AppBrand.defaultAtelierName;
+    final displayTitle = isHome ? atelier : (title ?? atelier);
 
     return Container(
       height: 56,

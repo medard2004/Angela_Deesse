@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../core/app_brand.dart';
 import '../db/app_database.dart' as db_layer;
 import '../db/clock.dart';
 
@@ -9,7 +10,7 @@ const String kSettingNotifFitting = 'notif_fitting';
 const String kSettingNotifPayments = 'notif_payments';
 const String kSettingNotifLate = 'notif_late';
 
-const String kDefaultAtelierName = 'Angela Couture';
+const String kDefaultAtelierName = AppBrand.defaultAtelierName;
 const bool kDefaultNotifDelivery = true;
 const bool kDefaultNotifFitting = true;
 const bool kDefaultNotifPayments = true;

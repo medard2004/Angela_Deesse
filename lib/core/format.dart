@@ -23,3 +23,12 @@ String countdown(DateTime d) {
 
 String fmtDayLong(DateTime d) => DateFormat('EEEE d MMMM', 'fr_FR').format(d);
 String fmtTime(DateTime d) => DateFormat('HH:mm').format(d);
+
+/// Formate un numéro de reçu de manière unifiée et non-divergente.
+/// Type: 'CMD' (commande client) ou 'APP' (versement apprenti).
+/// Exemple: formatReceiptNumber('CMD', 7) -> 'CMD-0007'
+///          formatReceiptNumber('APP', 1) -> 'APP-0001'
+String formatReceiptNumber(String type, int number) {
+  final cleanType = type.trim().toUpperCase();
+  return '$cleanType-${number.toString().padLeft(4, '0')}';
+}

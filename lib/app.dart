@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'core/app_brand.dart';
 import 'core/theme.dart';
 import 'data/services/app_lock_manager.dart';
 import 'screens/lock_screen.dart';
@@ -65,7 +66,8 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => MaterialApp(
         navigatorKey: _navigatorKey,
-        title: 'Angela Déesse',
+        title: AppBrand.appName,
+        onGenerateTitle: (_) => AppBrand.appName,
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
         locale: const Locale('fr'),

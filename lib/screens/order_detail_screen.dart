@@ -11,7 +11,7 @@ class OrderDetailScreen extends StatelessWidget {
 
   void _openReceiptForClientPayment(BuildContext context, Order o, Client? client, ClientPayment cp) {
     final s = context.read<AppStore>();
-    final receiptFormatted = 'CMD-${cp.receiptNumber.toString().padLeft(4, '0')}';
+    final receiptFormatted = formatReceiptNumber('CMD', cp.receiptNumber);
     final stamp = cp.isVoided
         ? 'ANNULÉ'
         : (cp.balanceAfter <= 0 ? 'SOLDÉ' : 'VERSÉ');

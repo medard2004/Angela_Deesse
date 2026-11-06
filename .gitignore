@@ -11,3 +11,5 @@ android/key.properties
 .gradle/
 android/.gradle/
 .vscode/
+prompt.md
+

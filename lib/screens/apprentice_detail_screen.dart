@@ -10,7 +10,7 @@ class ApprenticeDetailScreen extends StatelessWidget {
 
   void _openReceipt(BuildContext context, Apprentice a, ApprenticePayment p) {
     final s = context.read<AppStore>();
-    final receiptFormatted = p.receiptNumber.toString().padLeft(4, '0');
+    final receiptFormatted = formatReceiptNumber('APP', p.receiptNumber);
     final stamp = p.isVoided
         ? 'ANNULÉ'
         : (p.balanceAfter <= 0 ? 'SOLDÉ' : 'VERSÉ');

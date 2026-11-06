@@ -340,7 +340,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                                           alignment: Alignment.center,
                                           child: FadeTransition(
                                             opacity: _stampOpacity,
-                                            child: _StampBadge(text: widget.data.stampText),
+                                            child: _StampBadge(
+                                              text: widget.data.stampText,
+                                              atelierName: widget.data.atelierName,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -730,8 +733,9 @@ class _BarcodeArt extends StatelessWidget {
 
 /// C) Tampon circulaire (~30% de la largeur du papier), incliné à -12° (-0.21 rad)
 class _StampBadge extends StatelessWidget {
-  const _StampBadge({required this.text});
+  const _StampBadge({required this.text, this.atelierName = 'Angela Déesse'});
   final String text;
+  final String atelierName;
 
   @override
   Widget build(BuildContext context) {
@@ -773,7 +777,9 @@ class _StampBadge extends StatelessWidget {
                 ),
               ),
               Text(
-                'ANGELA ATELIER',
+                atelierName.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w700,

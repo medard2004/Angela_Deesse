@@ -121,7 +121,7 @@ void main() {
         balance: 15000,
         atelier: 'Atelier Angela',
       );
-      expect(msgPrete, contains('Bonjour Afiwa, votre commande « Boubou Bazin » est prête (Atelier Angela).'));
+      expect(msgPrete, contains('Bonjour Afiwa, votre commande « Boubou Bazin » est prête chez Atelier Angela.'));
       expect(msgPrete, contains('Reste à payer : 15 000 FCFA.'));
       expect(msgPrete, isNot(contains('Mme')));
 
@@ -132,6 +132,7 @@ void main() {
         balance: 0,
         atelier: 'Atelier Angela',
       );
+      expect(msgPreteSolde, contains('est prête chez Atelier Angela. À bientôt !'));
       expect(msgPreteSolde, isNot(contains('Reste à payer')));
 
       // 3.2 Rappel d'essayage
@@ -142,7 +143,7 @@ void main() {
         atelier: 'Atelier Angela',
       );
       expect(msgEssayage, contains('Bonjour Akossiwa, nous vous rappelons votre séance d\'essayage pour la commande « Robe Cérémonie »'));
-      expect(msgEssayage, contains('Atelier Angela'));
+      expect(msgEssayage, contains('chez Atelier Angela'));
       expect(msgEssayage, isNot(contains('Mme')));
 
       // 3.3 Rappel de livraison
@@ -153,7 +154,7 @@ void main() {
         atelier: 'Atelier Angela',
       );
       expect(msgLivraison, contains('Bonjour Mawussi, la livraison de votre commande « Ensemble Pagne » est prévue'));
-      expect(msgLivraison, contains('Atelier Angela'));
+      expect(msgLivraison, contains('chez Atelier Angela'));
 
       // 3.4 Rappel de solde dû
       final msgSolde = MessageTemplates.rappelSoldeDu(
@@ -161,7 +162,7 @@ void main() {
         balance: 35000,
         atelier: 'Atelier Angela',
       );
-      expect(msgSolde, contains('Bonjour Edem, rappel concernant votre solde restant de 35 000 FCFA (Atelier Angela).'));
+      expect(msgSolde, contains('Bonjour Edem, rappel concernant votre solde restant de 35 000 FCFA chez Atelier Angela.'));
 
       // 3.5 Échéance apprenti
       final msgApprenti = MessageTemplates.echeanceApprenti(
@@ -171,7 +172,7 @@ void main() {
         atelier: 'Atelier Angela',
       );
       expect(msgApprenti, contains('Bonjour Yao, rappel concernant votre prochaine échéance de formation fixée au'));
-      expect(msgApprenti, contains('Montant restant : 20 000 FCFA.'));
+      expect(msgApprenti, contains('Montant restant : 20 000 FCFA. chez Atelier Angela.'));
 
       // 3.6 Reçu récapitulatif avec valeurs FIGÉES
       final receiptData = ReceiptData(

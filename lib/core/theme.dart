@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'motion.dart';
 
-/// Palette de la maquette Angela Dress : bleu cobalt + orange, encre marine pour le texte.
+/// Palette de l'application Angela Déesse : bleu cobalt + orange, encre marine pour le texte.
 class Pal {
   static const ink = Color(0xFF0F1B3D);
   static const indigo = ink; // alias historique (texte et surfaces sombres)

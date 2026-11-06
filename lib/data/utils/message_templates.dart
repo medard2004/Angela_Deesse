@@ -16,7 +16,7 @@ class MessageTemplates {
   }) {
     final soldeClause =
         balance > 0 ? ' Reste à payer : ${fcfa(balance)}.' : '';
-    return 'Bonjour $client, votre commande « $orderTitle » est prête ($atelier).$soldeClause À bientôt !';
+    return 'Bonjour $client, votre commande « $orderTitle » est prête chez $atelier.$soldeClause À bientôt !';
   }
 
   /// Modèle 2 : Rappel d'essayage
@@ -26,7 +26,7 @@ class MessageTemplates {
     required DateTime fittingDate,
     required String atelier,
   }) {
-    return 'Bonjour $client, nous vous rappelons votre séance d\'essayage pour la commande « $orderTitle » prévue le ${fmtDate(fittingDate)} ($atelier). À bientôt !';
+    return 'Bonjour $client, nous vous rappelons votre séance d\'essayage pour la commande « $orderTitle » prévue le ${fmtDate(fittingDate)} chez $atelier. À bientôt !';
   }
 
   /// Modèle 3 : Rappel de livraison
@@ -36,7 +36,7 @@ class MessageTemplates {
     required DateTime deliveryDate,
     required String atelier,
   }) {
-    return 'Bonjour $client, la livraison de votre commande « $orderTitle » est prévue le ${fmtDate(deliveryDate)} ($atelier). À bientôt !';
+    return 'Bonjour $client, la livraison de votre commande « $orderTitle » est prévue le ${fmtDate(deliveryDate)} chez $atelier. À bientôt !';
   }
 
   /// Modèle 4 : Rappel de solde dû
@@ -45,7 +45,7 @@ class MessageTemplates {
     required int balance,
     required String atelier,
   }) {
-    return 'Bonjour $client, rappel concernant votre solde restant de ${fcfa(balance)} ($atelier). Merci de votre confiance !';
+    return 'Bonjour $client, rappel concernant votre solde restant de ${fcfa(balance)} chez $atelier. Merci de votre confiance !';
   }
 
   /// Modèle 5 : Rappel d'échéance d'apprenti
@@ -57,7 +57,7 @@ class MessageTemplates {
   }) {
     final soldeClause =
         amount > 0 ? ' Montant restant : ${fcfa(amount)}.' : '';
-    return 'Bonjour $apprenti, rappel concernant votre prochaine échéance de formation fixée au ${fmtDate(dueDate)}.$soldeClause $atelier.';
+    return 'Bonjour $apprenti, rappel concernant votre prochaine échéance de formation fixée au ${fmtDate(dueDate)}.$soldeClause chez $atelier.';
   }
 
   /// Modèle 6 : Reçu (récapitulatif texte avec valeurs FIGÉES du reçu)

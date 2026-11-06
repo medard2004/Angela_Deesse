@@ -1,3 +1,4 @@
+import '../core/app_brand.dart';
 import '../ui.dart';
 import 'lock_screen.dart';
 
@@ -61,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(s.atelierName, style: const TextStyle(fontFamily: 'Fraunces', fontSize: 17, fontWeight: FontWeight.w700)),
-                  const Text('Angela Déesse', style: TextStyle(color: Pal.slate, fontSize: 12)),
+                  const Text(AppBrand.appName, style: TextStyle(color: Pal.slate, fontSize: 12)),
                 ]),
               ),
               IconButton(onPressed: () => _rename(s), icon: const Icon(Icons.edit_outlined, size: 18, color: Pal.cobalt), tooltip: 'Renommer'),
@@ -128,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 6),
         const StaggeredFadeIn(
           index: 7,
-          child: Center(child: Text('Angela Déesse · version 0.1.0 (maquette UI)\nRéalisé par Digital Vision', textAlign: TextAlign.center, style: TextStyle(color: Pal.slate, fontSize: 11.5, height: 1.4))),
+          child: Center(child: Text('${AppBrand.appName} · version 0.1.0\nRéalisé par Digital Vision', textAlign: TextAlign.center, style: TextStyle(color: Pal.slate, fontSize: 11.5, height: 1.4))),
         ),
       ]),
     );
