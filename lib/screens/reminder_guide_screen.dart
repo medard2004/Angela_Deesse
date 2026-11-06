@@ -145,25 +145,30 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
     }
   }
 
-  Future<void> _scheduleTest(Duration delay, String label) async {
+  Future<void> _scheduleTest(Duration delay, String label, {bool asAlarm = true}) async {
     final reminderService = context.read<SystemReminderService?>();
     if (reminderService == null) return;
 
-    await reminderService.scheduleRingerTest(delay: delay);
+    await reminderService.scheduleRingerTest(delay: delay, asAlarm: asAlarm);
     await _refreshDiagnostic();
 
     if (!mounted) return;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(children: [
-          Icon(Icons.alarm_on_rounded, color: Pal.cobalt, size: 24),
-          SizedBox(width: 8),
-          Text('Test programmé', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: Row(children: [
+          Icon(asAlarm ? Icons.alarm_on_rounded : Icons.notifications_active_outlined, color: Pal.cobalt, size: 24),
+          const SizedBox(width: 8),
+          const Text('Test programmé', style: TextStyle(fontWeight: FontWeight.w800)),
         ]),
         content: Text(
-          'Une alarme de test retentira dans $label.\n\n'
-          'Verrouillez l\'écran de votre téléphone et posez-le sur l\'établi pour vérifier qu\'il sonne bien même en veille.',
+          asAlarm
+              ? 'Une alarme de test retentira dans $label.\n\n'
+                '• Si vous restez dans l\'application, l\'écran d\'alarme apparaîtra en direct.\n'
+                '• Si vous verrouillez votre écran, votre téléphone se réveillera avec sonnerie et écran d\'alarme.'
+              : 'Une notification de test retentira dans $label.\n\n'
+                '• Si vous restez dans l\'application, un bandeau in-app s\'affichera en haut.\n'
+                '• Si vous quittez l\'application, vous recevrez une notification push standard.',
           style: const TextStyle(fontSize: 13.5, height: 1.4),
         ),
         actions: [
@@ -544,36 +549,73 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Vérifiez par vous-même que votre téléphone sonne fort et clair lorsque l\'écran est éteint et verrouillé.',
+                        'Testez immédiatement le réveil plein écran et les notifications in-app ou push sur votre téléphone.',
                         style: TextStyle(color: Pal.slate, fontSize: 12, height: 1.35),
                       ),
                       const SizedBox(height: 14),
+                      const Text(
+                        '⏰ Alarme réveil plein écran :',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Pal.ink),
+                      ),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
                             child: FilledButton.icon(
-                              onPressed: () => _scheduleTest(const Duration(minutes: 1), '1 minute'),
-                              icon: const Icon(Icons.timer_outlined, size: 16),
-                              label: const Text('Dans 1 min', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                              onPressed: () => _scheduleTest(const Duration(seconds: 10), '10 secondes', asAlarm: true),
+                              icon: const Icon(Icons.flash_on_rounded, size: 16),
+                              label: const Text('Dans 10s', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                               style: FilledButton.styleFrom(
-                                backgroundColor: Pal.cobalt,
-                                padding: const EdgeInsets.symmetric(vertical: 11),
+                                backgroundColor: const Color(0xFFB45309),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => _scheduleTest(const Duration(minutes: 1), '1 minute', asAlarm: true),
+                              icon: const Icon(Icons.timer_outlined, size: 16),
+                              label: const Text('Dans 1 min', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Pal.cobalt,
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => _scheduleTest(const Duration(minutes: 30), '30 minutes'),
-                              icon: const Icon(Icons.bedtime_outlined, size: 16, color: Pal.cobalt),
-                              label: const Text('Dans 30 min', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Pal.cobalt)),
+                              onPressed: () => _scheduleTest(const Duration(minutes: 30), '30 minutes', asAlarm: true),
+                              icon: const Icon(Icons.bedtime_outlined, size: 15, color: Pal.cobalt),
+                              label: const Text('Dans 30 min', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Pal.cobalt)),
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: Pal.cobalt),
-                                padding: const EdgeInsets.symmetric(vertical: 11),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
                               ),
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Divider(height: 1, color: Pal.line),
+                      const SizedBox(height: 12),
+                      const Text(
+                        '🔔 Notification standard (push / in-app) :',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Pal.ink),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _scheduleTest(const Duration(seconds: 5), '5 secondes', asAlarm: false),
+                          icon: const Icon(Icons.notifications_active_outlined, size: 16, color: Pal.cobalt),
+                          label: const Text('Tester la notification (dans 5s)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Pal.cobalt)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Pal.cobalt),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                          ),
+                        ),
                       ),
                     ],
                   ),
