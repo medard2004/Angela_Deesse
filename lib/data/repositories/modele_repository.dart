@@ -4,6 +4,7 @@ import '../db/app_database.dart' as db_layer;
 import '../db/clock.dart';
 import '../db/id_generator.dart';
 import '../models.dart';
+import '../utils/photo_metadata.dart';
 
 abstract class ModeleRepository {
   Stream<List<Modele>> watchAll();
@@ -71,6 +72,7 @@ class DriftModeleRepository implements ModeleRepository {
 
     final createdAt = existing?.createdAt ?? now;
     final updatedAt = now;
+    final photoMeta = resolvePhotoMetadata(modele.photo, existingUploadState: existing?.photoUploadState);
 
     await db.writeWithOutbox(
       entity: 'modeles',
@@ -84,7 +86,8 @@ class DriftModeleRepository implements ModeleRepository {
                 name: Value(modele.name),
                 description: Value(modele.description),
                 photoPath: Value(modele.photo),
-                photoUploadState: const Value('none'),
+                photoHash: Value(photoMeta.hash),
+                photoUploadState: Value(photoMeta.uploadState),
                 createdAt: Value(createdAt),
                 updatedAt: Value(updatedAt),
                 deletedAt: const Value(null),

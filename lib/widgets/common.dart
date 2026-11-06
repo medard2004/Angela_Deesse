@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/format.dart';
 import '../core/motion.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
+import '../data/services/photo_storage.dart';
 
 Future<T?> push<T>(BuildContext c, Widget w) =>
     Navigator.of(c).push<T>(FadePageRoute<T>(builder: (_) => w));
@@ -501,9 +505,13 @@ const _demoGradients = [
 
 int _demoIndex = 0;
 
-/// Simule l'ajout d'une photo (appareil / galerie) : renvoie une tuile de démonstration.
+enum _PickPhotoOption { camera, gallery, demo }
+
+/// Sélectionne une photo (appareil / galerie, ou démo en debug) :
+/// Enregistre d'abord le fichier via PhotoStorage, puis renvoie le chemin relatif.
 Future<String?> pickPhoto(BuildContext context) async {
-  final ok = await showMotionBottomSheet<bool>(
+  final photoStorage = context.read<PhotoStorage?>();
+  final choice = await showMotionBottomSheet<_PickPhotoOption>(
     context: context,
     isScrollControlled: false,
     builder: (c) => SafeArea(
@@ -514,7 +522,7 @@ Future<String?> pickPhoto(BuildContext context) async {
           child: ListTile(
             leading: const CircleAvatar(backgroundColor: Pal.chalk, child: Icon(Icons.photo_camera_outlined, color: Pal.cobalt)),
             title: const Text('Prendre une photo', style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () => Navigator.pop(c, true),
+            onTap: () => Navigator.pop(c, _PickPhotoOption.camera),
           ),
         ),
         StaggeredFadeIn(
@@ -522,40 +530,166 @@ Future<String?> pickPhoto(BuildContext context) async {
           child: ListTile(
             leading: const CircleAvatar(backgroundColor: Pal.chalk, child: Icon(Icons.photo_library_outlined, color: Pal.cobalt)),
             title: const Text('Choisir dans la galerie', style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () => Navigator.pop(c, true),
+            onTap: () => Navigator.pop(c, _PickPhotoOption.gallery),
           ),
         ),
+        if (kDebugMode)
+          StaggeredFadeIn(
+            index: 2,
+            child: ListTile(
+              leading: const CircleAvatar(backgroundColor: Pal.chalk, child: Icon(Icons.palette_outlined, color: Pal.orange)),
+              title: const Text('Photo de démo (debug)', style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () => Navigator.pop(c, _PickPhotoOption.demo),
+            ),
+          ),
         const SizedBox(height: 8),
       ]),
     ),
   );
-  if (ok != true) return null;
-  return 'demo:${_demoIndex++ % _demoGradients.length}';
+
+  if (choice == null) return null;
+
+  if (choice == _PickPhotoOption.demo) {
+    return 'demo:${_demoIndex++ % _demoGradients.length}';
+  }
+
+  if (photoStorage == null) {
+    return 'demo:${_demoIndex++ % _demoGradients.length}';
+  }
+
+  try {
+    final source = choice == _PickPhotoOption.camera ? PhotoSource.camera : PhotoSource.gallery;
+    final picked = await photoStorage.pick(source);
+    return picked?.relativePath;
+  } catch (e) {
+    if (context.mounted) {
+      toast(context, 'Impossible d\'enregistrer la photo');
+    }
+    return null;
+  }
 }
 
 class PhotoThumb extends StatelessWidget {
-  const PhotoThumb(this.path, {super.key, this.size = 64, this.radius = 16, this.onTap});
+  const PhotoThumb(
+    this.path, {
+    super.key,
+    this.size = 64,
+    this.radius = 16,
+    this.onTap,
+    this.isFullResolution = false,
+  });
+
   final String? path;
   final double size, radius;
   final VoidCallback? onTap;
+  final bool isFullResolution;
 
   @override
   Widget build(BuildContext context) {
-    final idx = path != null && path!.startsWith('demo:') ? int.tryParse(path!.substring(5)) : null;
+    final pStr = path;
+    final isDemo = pStr != null && pStr.startsWith('demo:');
+    final idx = isDemo ? int.tryParse(pStr.substring(5)) : null;
     final colors = idx == null ? null : _demoGradients[idx % _demoGradients.length];
+
+    Widget body;
+    if (pStr == null || pStr.isEmpty) {
+      body = const DecoratedBox(
+        decoration: BoxDecoration(color: Pal.line),
+        child: Center(
+          child: Icon(Icons.checkroom_rounded, size: 26, color: Pal.slate),
+        ),
+      );
+    } else if (isDemo) {
+      body = DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: colors == null
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: colors,
+                ),
+          color: colors == null ? Pal.line : null,
+        ),
+        child: Center(
+          child: Icon(
+            Icons.checkroom_rounded,
+            size: 26,
+            color: colors == null ? Pal.slate : Colors.white70,
+          ),
+        ),
+      );
+    } else {
+      // Photo réelle sur disque (relative ou absolue)
+      final photoStorage = context.watch<PhotoStorage?>();
+      if (photoStorage != null) {
+        body = FutureBuilder<String>(
+          future: photoStorage.getAbsolutePath(pStr),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const DecoratedBox(decoration: BoxDecoration(color: Pal.line));
+            }
+            final absPath = snapshot.data!;
+            final file = File(absPath);
+            if (!file.existsSync()) {
+              return const DecoratedBox(
+                decoration: BoxDecoration(color: Pal.line),
+                child: Center(
+                  child: Icon(Icons.broken_image_outlined, size: 24, color: Pal.slate),
+                ),
+              );
+            }
+            return Image.file(
+              file,
+              fit: BoxFit.cover,
+              width: size.isFinite ? size : null,
+              height: size.isFinite ? size : null,
+              cacheWidth: (!isFullResolution && size.isFinite && size > 0)
+                  ? (size * 2).clamp(100, 1600).toInt()
+                  : null,
+              errorBuilder: (_, __, ___) => const DecoratedBox(
+                decoration: BoxDecoration(color: Pal.line),
+                child: Center(
+                  child: Icon(Icons.broken_image_outlined, size: 24, color: Pal.slate),
+                ),
+              ),
+            );
+          },
+        );
+      } else {
+        final file = File(pStr);
+        if (!file.existsSync()) {
+          body = const DecoratedBox(
+            decoration: BoxDecoration(color: Pal.line),
+            child: Center(
+              child: Icon(Icons.broken_image_outlined, size: 24, color: Pal.slate),
+            ),
+          );
+        } else {
+          body = Image.file(
+            file,
+            fit: BoxFit.cover,
+            width: size.isFinite ? size : null,
+            height: size.isFinite ? size : null,
+            errorBuilder: (_, __, ___) => const DecoratedBox(
+              decoration: BoxDecoration(color: Pal.line),
+              child: Center(
+                child: Icon(Icons.broken_image_outlined, size: 24, color: Pal.slate),
+              ),
+            ),
+          );
+        }
+      }
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
-        width: size, height: size,
+        width: size.isFinite ? size : null,
+        height: size.isFinite ? size : null,
         child: GestureDetector(
-          onTap: onTap ?? (colors == null ? null : () => openPhoto(context, path!)),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: colors == null ? null : LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors),
-              color: colors == null ? Pal.line : null,
-            ),
-            child: Center(child: Icon(Icons.checkroom_rounded, size: 26, color: colors == null ? Pal.slate : Colors.white70)),
-          ),
+          onTap: onTap ?? (pStr != null && pStr.isNotEmpty ? () => openPhoto(context, pStr) : null),
+          child: body,
         ),
       ),
     );
@@ -570,7 +704,7 @@ void openPhoto(BuildContext c, String path) => Navigator.of(c).push(FadePageRout
           child: AspectRatio(
             aspectRatio: .8,
             child: FeaturedHeroImage(
-              child: PhotoThumb(path, size: double.infinity, radius: 0, onTap: () {}),
+              child: PhotoThumb(path, size: double.infinity, radius: 0, isFullResolution: true, onTap: () {}),
             ),
           ),
         ),

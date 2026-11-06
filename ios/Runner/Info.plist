@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Cette application utilise l'appareil photo pour photographier les tenues, modèles et prises de mesures de l'atelier.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application accède à la galerie pour importer les photos de confections et de modèles.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

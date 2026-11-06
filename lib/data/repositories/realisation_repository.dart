@@ -4,6 +4,7 @@ import '../db/app_database.dart' as db_layer;
 import '../db/clock.dart';
 import '../db/id_generator.dart';
 import '../models.dart';
+import '../utils/photo_metadata.dart';
 
 abstract class RealisationRepository {
   Stream<List<Realisation>> watchAll();
@@ -108,6 +109,7 @@ class DriftRealisationRepository implements RealisationRepository {
 
     final createdAt = existing?.createdAt ?? realisation.createdAt;
     final updatedAt = now;
+    final photoMeta = resolvePhotoMetadata(realisation.photo, existingUploadState: existing?.photoUploadState);
 
     await db.writeWithOutbox(
       entity: 'realisations',
@@ -122,7 +124,8 @@ class DriftRealisationRepository implements RealisationRepository {
                 clientId: Value(realisation.clientId),
                 caption: Value(realisation.caption),
                 photoPath: Value(realisation.photo),
-                photoUploadState: const Value('none'),
+                photoHash: Value(photoMeta.hash),
+                photoUploadState: Value(photoMeta.uploadState),
                 createdAt: Value(createdAt),
                 updatedAt: Value(updatedAt),
                 deletedAt: const Value(null),

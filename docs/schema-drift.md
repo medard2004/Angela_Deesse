@@ -26,8 +26,8 @@ Ce document décrit le schéma complet de la base de données locale sous Drift 
    - La méthode `AppDatabase.reconcileReceiptCounters()` recalcule `last_value = max(last_value, MAX(receipt_number))` après tout pull ou restauration de données (versements annulés inclus).
    - Les versements ne sont ni modifiés ni supprimés : l'annulation s'effectue via `voided_at` + `void_reason`. Les versements annulés sont exclus des totaux de paiement et du solde restant. Leur numéro de reçu n'est jamais réutilisé.
 6. **Gestion des photos & Table `order_photos`** :
-   - Les entités disposant d'une photo principale portent `photo_path` (acceptant la convention `demo:N` ou chemin local absolu), `photo_hash` (nullable) et `photo_upload_state` (`none`, `pending`, `uploaded`, `failed`).
-   - Les photos multiples d'une commande sont stockées dans la table dédiée `order_photos` pour gérer individuellement l'état d'upload et le positionnement de chaque cliché.
+   - Les entités disposant d'une photo principale portent `photo_path` (acceptant la convention `demo:N` ou chemin local relatif `photos/<hash>.jpg`), `photo_hash` (nullable) et `photo_upload_state` (`none`, `pending`, `uploaded`, `failed`). Le schéma SQLite lui-même ne change pas dans cette tranche : les trois colonnes étaient déjà prévues.
+   - Les photos multiples d'une commande sont stockées dans la table dédiée `order_photos` pour gérer individuellement l'état d'upload et le positionnement de chaque cliché. Toutes les photos réelles partagent le même dossier local de stockage dédoublonné par hash SHA-256 sans duplication physique de fichier.
 7. **Contraintes CHECK** :
    - `client_payments.amount > 0`
    - `client_payments.balance_after >= 0`

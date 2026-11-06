@@ -254,11 +254,10 @@ Côté serveur (Laravel) :
 ### Tranche 5C (Nettoyage, audit outbox et clôture couche locale) — Terminée
 - **Nettoyage** : suppression du code mort en mémoire, passage de `AppStore.init({bool seedDemo = true})` pour supporter l'initialisation sur base vierge sans seeding en test.
 - **Éléments restant mock / volatils** :
-  1. Photos : identifiants `demo:N` (en attente d'`image_picker` + `path_provider`).
-  2. Partage et contact : boutons WhatsApp / SMS / appel (SnackBar au lieu d'`url_launcher`).
-  3. Reçus : boutons PDF et impression thermique (SnackBar au lieu de `pdf` / `printing`).
-  4. Code PIN : `LockScreen` maquette acceptant tout code à 4 chiffres (en attente de `flutter_secure_storage`).
-  5. Notifications système : interrupteurs persistés mais aucune alarme locale planifiée (en attente de `flutter_local_notifications`).
+  1. Partage et contact : boutons WhatsApp / SMS / appel (SnackBar au lieu d'`url_launcher`).
+  2. Reçus : boutons PDF et impression thermique (SnackBar au lieu de `pdf` / `printing`).
+  3. Code PIN : `LockScreen` maquette acceptant tout code à 4 chiffres (en attente de `flutter_secure_storage`).
+  4. Notifications système : interrupteurs persistés mais aucune alarme locale planifiée (en attente de `flutter_local_notifications`).
 - **Audit Outbox & Invariants** :
   - Test d'invariant automatisé (`test/db/outbox_audit_test.dart`) déroulant un scénario complet sur base vide touchant les 10 entités synchronisables.
   - Vérifié : chaque ligne de chaque table synchronisable a au moins une entrée correspondante `(entity, entity_id)` dans `sync_outbox`.
@@ -269,3 +268,26 @@ Côté serveur (Laravel) :
 - **Revue du schéma Drift v1** :
   - `docs/schema-drift.md` harmonisé pour expliciter que `fitting_date` est un instant préservant l'heure d'essayage.
   - Schéma v1 prêt à être gelé pour la synchronisation.
+
+### Tranche Photos (Photos réelles, stockage local et dédoublonnage) — Terminée
+- **Service `PhotoStorage`** (`lib/data/services/photo_storage.dart`) :
+  - Interface abstraite injectée via `Provider<PhotoStorage>` dans `main.dart`. Implémentation `DefaultPhotoStorage` utilisant `image_picker` et `path_provider`.
+  - Acquisition caméra / galerie avec compression `image_picker` (1600x1600, qualité 80). Redressement EXIF automatique appliqué aux pixels et métadonnées GPS purgées par les OS.
+  - Hachage SHA-256 des octets compressés : nommage déterministe `photos/<hash>.jpg`.
+  - Dédoublonnage : si le fichier existe déjà, il n'est pas réécrit et son chemin relatif est réutilisé.
+  - Écriture atomique : écriture dans `photos/<hash>.jpg.tmp` puis renommage atomique vers `photos/<hash>.jpg`. Aucun fichier corrompu en cas de coupure.
+  - Support d'Android `retrieveLostData()` pour restaurer les clichés si le processus a été tué par le système.
+- **Chemins relatifs & Résolveur d'affichage** :
+  - Seul le chemin relatif `photos/<hash>.jpg` (ou `demo:N`) est stocké en base SQLite (`photo_path`).
+  - Aucun chemin absolu n'est persisté en base (immunité contre les changements de répertoire d'application sous iOS/Android).
+  - Résolution dynamique via `PhotoStorage.getAbsolutePath()`.
+  - Optimisation vignette : `PhotoThumb` applique `cacheWidth` sur les vignettes réduites (`(size * 2).clamp(100, 1600)`), évitant le décodage plein format en mémoire dans les listes. Plein format réservé au visualiseur `openPhoto`.
+  - Fallback neutre sans plantage si le fichier est manquant ou invalide (`Icons.broken_image_outlined`).
+- **Règles de cohérence des colonnes (Décision 4)** :
+  - Centralisées dans `lib/data/utils/photo_metadata.dart` (`resolvePhotoMetadata`) pour `modeles`, `realisations`, `orders` et `order_photos`.
+  - `demo:N` ou vide : `photo_hash = null`, `photo_upload_state = 'none'`.
+  - Photo réelle (`photos/<hash>.jpg`) : `photo_hash = <hash>`, `photo_upload_state = 'pending'`.
+- **Politique de suppression et règles de synchronisation future** :
+  - Aucun fichier photo physique n'est supprimé dans cette tranche lors de la suppression logique d'une entité ou du remplacement d'une photo (évite les suppressions orphelines partagées par dédoublonnage).
+  - Règle de restauration lors de la future sync : si la ligne SQLite possède un `photo_hash` et que le fichier local manque, la sync le téléchargera depuis Supabase Storage.
+  - Ordre imposé lors de la sync : données d'abord (SQLite / Outbox), photos ensuite (fichiers binaires en arrière-plan).

@@ -4,6 +4,7 @@ import '../db/app_database.dart' as db_layer;
 import '../db/clock.dart';
 import '../db/id_generator.dart';
 import '../models.dart';
+import '../utils/photo_metadata.dart';
 
 /// Normalise une date jour-seul en UTC (00:00:00 UTC) pour préserver le même jour
 /// quel que soit le fuseau horaire de lecture.
@@ -215,7 +216,8 @@ class DriftOrderRepository implements OrderRepository {
               status: Value(order.status.name),
               deliveredAt: Value(deliveredAt),
               photoPath: Value(order.photos.firstOrNull),
-              photoUploadState: const Value('none'),
+              photoHash: Value(resolvePhotoMetadata(order.photos.firstOrNull, existingUploadState: existing?.photoUploadState).hash),
+              photoUploadState: Value(resolvePhotoMetadata(order.photos.firstOrNull, existingUploadState: existing?.photoUploadState).uploadState),
               createdAt: Value(createdAt),
               updatedAt: Value(updatedAt),
               deletedAt: const Value(null),
@@ -289,13 +291,15 @@ class DriftOrderRepository implements OrderRepository {
         } else {
           // Nouvelle photo
           final photoId = idGenerator.generate();
+          final photoMeta = resolvePhotoMetadata(path);
           await db.into(db.orderPhotos).insert(
                 db_layer.OrderPhotosCompanion.insert(
                   id: photoId,
                   orderId: order.id,
                   photoPath: path,
+                  photoHash: Value(photoMeta.hash),
                   position: Value(pos),
-                  photoUploadState: const Value('none'),
+                  photoUploadState: Value(photoMeta.uploadState),
                   createdAt: updatedAt,
                   updatedAt: updatedAt,
                 ),
@@ -349,7 +353,8 @@ class DriftOrderRepository implements OrderRepository {
               status: Value(order.status.name),
               deliveredAt: Value(deliveredAt),
               photoPath: Value(order.photos.firstOrNull),
-              photoUploadState: const Value('none'),
+              photoHash: Value(resolvePhotoMetadata(order.photos.firstOrNull).hash),
+              photoUploadState: Value(resolvePhotoMetadata(order.photos.firstOrNull).uploadState),
               createdAt: createdAt,
               updatedAt: updatedAt,
             ),
@@ -369,13 +374,15 @@ class DriftOrderRepository implements OrderRepository {
       for (var pos = 0; pos < order.photos.length; pos++) {
         final ph = order.photos[pos];
         final photoId = idGenerator.generate();
+        final photoMeta = resolvePhotoMetadata(ph);
         await db.into(db.orderPhotos).insert(
               db_layer.OrderPhotosCompanion.insert(
                 id: photoId,
                 orderId: order.id,
                 photoPath: ph,
+                photoHash: Value(photoMeta.hash),
                 position: Value(pos),
-                photoUploadState: const Value('none'),
+                photoUploadState: Value(photoMeta.uploadState),
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
