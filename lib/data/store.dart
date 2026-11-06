@@ -20,6 +20,14 @@ import 'repositories/settings_repository.dart';
 import 'services/system_reminder_service.dart';
 import 'utils/sort_utils.dart';
 
+export 'repositories/settings_repository.dart'
+    show
+        ReminderMode,
+        kDefaultModeDelivery,
+        kDefaultModeFitting,
+        kDefaultModePayments,
+        kDefaultModeLate;
+
 IdGenerator defaultIdGenerator = const UuidV7IdGenerator();
 String newId() => defaultIdGenerator.generate();
 
@@ -128,10 +136,15 @@ class AppStore extends ChangeNotifier {
   FinanceRepository get financeRepo => _financeRepo;
 
   String get atelierName => _settingsMap[kSettingAtelierName] ?? kDefaultAtelierName;
-  bool get notifDelivery => _settingsMap[kSettingNotifDelivery] != 'false';
-  bool get notifFitting => _settingsMap[kSettingNotifFitting] != 'false';
-  bool get notifPayments => _settingsMap[kSettingNotifPayments] != 'false';
-  bool get notifLate => _settingsMap[kSettingNotifLate] != 'false';
+  ReminderMode get deliveryMode => ReminderMode.parse(_settingsMap[kSettingNotifDelivery], fallback: kDefaultModeDelivery);
+  ReminderMode get fittingMode => ReminderMode.parse(_settingsMap[kSettingNotifFitting], fallback: kDefaultModeFitting);
+  ReminderMode get paymentsMode => ReminderMode.parse(_settingsMap[kSettingNotifPayments], fallback: kDefaultModePayments);
+  ReminderMode get lateMode => ReminderMode.parse(_settingsMap[kSettingNotifLate], fallback: kDefaultModeLate);
+
+  bool get notifDelivery => deliveryMode != ReminderMode.none;
+  bool get notifFitting => fittingMode != ReminderMode.none;
+  bool get notifPayments => paymentsMode != ReminderMode.none;
+  bool get notifLate => lateMode != ReminderMode.none;
   bool get reminderGuideDismissed => _settingsMap[kSettingReminderGuideDismissed] == 'true';
 
   int get monthTotal => _financeSummary?.monthTotal ?? 0;
@@ -155,37 +168,42 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setNotifDelivery(bool v) async {
-    final str = v ? 'true' : 'false';
+  Future<void> setDeliveryMode(ReminderMode m) async {
+    final str = m.toSettingString();
     await _settingsRepo.set(kSettingNotifDelivery, str);
     _settingsMap[kSettingNotifDelivery] = str;
     _triggerReminderReschedule();
     notifyListeners();
   }
 
-  Future<void> setNotifFitting(bool v) async {
-    final str = v ? 'true' : 'false';
+  Future<void> setFittingMode(ReminderMode m) async {
+    final str = m.toSettingString();
     await _settingsRepo.set(kSettingNotifFitting, str);
     _settingsMap[kSettingNotifFitting] = str;
     _triggerReminderReschedule();
     notifyListeners();
   }
 
-  Future<void> setNotifPayments(bool v) async {
-    final str = v ? 'true' : 'false';
+  Future<void> setPaymentsMode(ReminderMode m) async {
+    final str = m.toSettingString();
     await _settingsRepo.set(kSettingNotifPayments, str);
     _settingsMap[kSettingNotifPayments] = str;
     _triggerReminderReschedule();
     notifyListeners();
   }
 
-  Future<void> setNotifLate(bool v) async {
-    final str = v ? 'true' : 'false';
+  Future<void> setLateMode(ReminderMode m) async {
+    final str = m.toSettingString();
     await _settingsRepo.set(kSettingNotifLate, str);
     _settingsMap[kSettingNotifLate] = str;
     _triggerReminderReschedule();
     notifyListeners();
   }
+
+  Future<void> setNotifDelivery(bool v) => setDeliveryMode(v ? ReminderMode.alarm : ReminderMode.none);
+  Future<void> setNotifFitting(bool v) => setFittingMode(v ? ReminderMode.alarm : ReminderMode.none);
+  Future<void> setNotifPayments(bool v) => setPaymentsMode(v ? ReminderMode.notification : ReminderMode.none);
+  Future<void> setNotifLate(bool v) => setLateMode(v ? ReminderMode.notification : ReminderMode.none);
 
   Future<void> setReminderGuideDismissed(bool v) async {
     final str = v ? 'true' : 'false';
@@ -321,6 +339,9 @@ class AppStore extends ChangeNotifier {
       deliveryEnabled: notifDelivery,
       fittingEnabled: notifFitting,
       paymentsEnabled: notifPayments,
+      deliveryMode: deliveryMode,
+      fittingMode: fittingMode,
+      paymentsMode: paymentsMode,
     );
   }
 
@@ -337,6 +358,9 @@ class AppStore extends ChangeNotifier {
         deliveryEnabled: notifDelivery,
         fittingEnabled: notifFitting,
         paymentsEnabled: notifPayments,
+        deliveryMode: deliveryMode,
+        fittingMode: fittingMode,
+        paymentsMode: paymentsMode,
       );
     } else {
       _triggerReminderReschedule();

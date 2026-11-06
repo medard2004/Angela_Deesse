@@ -204,6 +204,7 @@ void main() {
           deliveryEnabled: true,
           fittingEnabled: true,
           paymentsEnabled: true,
+          customNow: now,
           debounceDuration: const Duration(milliseconds: 50),
         );
       }

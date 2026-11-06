@@ -11,11 +11,38 @@ const String kSettingNotifPayments = 'notif_payments';
 const String kSettingNotifLate = 'notif_late';
 const String kSettingReminderGuideDismissed = 'reminder_guide_dismissed';
 
+/// Modes de rappel configurables par l'artisan pour chaque type d'événement.
+enum ReminderMode {
+  none('none', 'Désactivé'),
+  notification('notification', 'Notification'),
+  alarm('alarm', 'Alarme réveil');
+
+  const ReminderMode(this.code, this.label);
+  final String code;
+  final String label;
+
+  static ReminderMode parse(String? value, {ReminderMode fallback = ReminderMode.notification}) {
+    if (value == null) return fallback;
+    if (value == 'alarm') return ReminderMode.alarm;
+    if (value == 'notification') return ReminderMode.notification;
+    if (value == 'none' || value == 'false') return ReminderMode.none;
+    if (value == 'true') return fallback;
+    return fallback;
+  }
+
+  String toSettingString() => code;
+}
+
 const String kDefaultAtelierName = AppBrand.defaultAtelierName;
 const bool kDefaultNotifDelivery = true;
 const bool kDefaultNotifFitting = true;
 const bool kDefaultNotifPayments = true;
 const bool kDefaultNotifLate = true;
+
+const ReminderMode kDefaultModeDelivery = ReminderMode.alarm;
+const ReminderMode kDefaultModeFitting = ReminderMode.alarm;
+const ReminderMode kDefaultModePayments = ReminderMode.notification;
+const ReminderMode kDefaultModeLate = ReminderMode.notification;
 
 abstract class SettingsRepository {
   Stream<Map<String, String>> watchAll();

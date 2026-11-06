@@ -49,3 +49,4 @@ void main() {
     expect(store.atelierName, 'Nouvel Atelier Déesse');
   });
 }
+

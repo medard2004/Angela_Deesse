@@ -18,6 +18,9 @@ void main() {
       expect(manifestContent, contains('android.permission.USE_EXACT_ALARM'));
       expect(manifestContent, contains('android.permission.SCHEDULE_EXACT_ALARM'));
       expect(manifestContent, contains('android:maxSdkVersion="32"'));
+      expect(manifestContent, contains('android.permission.USE_FULL_SCREEN_INTENT'));
+      expect(manifestContent, contains('android:showWhenLocked="true"'));
+      expect(manifestContent, contains('android:turnScreenOn="true"'));
     });
 
     test('Receveurs de notifications déclarés', () {

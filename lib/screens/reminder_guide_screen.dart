@@ -102,6 +102,9 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
       deliveryEnabled: store.notifDelivery,
       fittingEnabled: store.notifFitting,
       paymentsEnabled: store.notifPayments,
+      deliveryMode: store.deliveryMode,
+      fittingMode: store.fittingMode,
+      paymentsMode: store.paymentsMode,
     );
 
     if (grouped.isNotEmpty) {

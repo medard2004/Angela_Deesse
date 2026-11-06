@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -5,9 +6,13 @@ import 'package:provider/provider.dart';
 import 'core/app_brand.dart';
 import 'core/theme.dart';
 import 'data/services/app_lock_manager.dart';
+import 'data/services/notification_center_service.dart';
+import 'data/services/system_reminder_service.dart';
 import 'data/store.dart';
+import 'screens/alarm_ringing_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/splash_screen.dart';
+import 'widgets/in_app_notification_banner.dart';
 
 class AngelaApp extends StatefulWidget {
   const AngelaApp({super.key});
@@ -19,11 +24,48 @@ class AngelaApp extends StatefulWidget {
 class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   AppLockManager? _lockManager;
+  StreamSubscription<Map<String, dynamic>>? _inAppEventSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Écoute des alarmes et notifications survenant pendant que l'app est active
+    _inAppEventSub = SystemReminderService.inAppEventStream.stream.listen((event) {
+      if (!mounted) return;
+      final isAlarm = event['isAlarm'] == true;
+      final title = event['title'] as String? ?? 'Rappel atelier';
+      final body = event['body'] as String? ?? '';
+      final id = event['id'] as int?;
+
+      if (isAlarm) {
+        _navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => AlarmRingingScreen(
+              title: title,
+              body: body,
+              notificationId: id,
+            ),
+          ),
+        );
+      } else {
+        final ctx = _navigatorKey.currentContext;
+        if (ctx != null) {
+          InAppNotificationBanner.show(
+            ctx,
+            title: title,
+            body: body,
+            onTap: () {
+              try {
+                ctx.read<NotificationCenterService?>()?.requestOpenNotifications();
+              } catch (_) {}
+            },
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -65,6 +107,7 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _inAppEventSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
