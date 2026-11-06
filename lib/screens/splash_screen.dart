@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../data/services/photo_storage.dart';
+import '../data/services/pin_security_service.dart';
 import '../data/store.dart';
 import '../shell/app_shell.dart';
 import '../widgets/common.dart';
+import 'lock_screen.dart';
+import 'security_error_screen.dart';
 
 /// Écran de splash épuré au lancement, sans page d'introduction ni bouton :
 /// - De 0 à 450 ms : apparition au centre avec fondu et zoom progressif (~55% à taille normale).
@@ -89,17 +93,71 @@ class _SplashScreenState extends State<SplashScreen>
           setState(() {});
           return;
         }
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const AppShell(),
-            transitionDuration: Duration.zero,
-          ),
-        );
+
+        // Récupération des photos perdues suite à destruction d'activité Android (avant le verrou)
+        try {
+          final photoStorage = context.read<PhotoStorage>();
+          await photoStorage.retrieveLostData();
+        } catch (_) {}
+
+        if (!mounted) return;
+        await _checkPinAndNavigate();
       }
     });
 
     // Démarrage automatique dès le lancement
     _controller.forward();
+  }
+
+  Future<void> _checkPinAndNavigate() async {
+    PinSecurityService? pinService;
+    try {
+      pinService = context.read<PinSecurityService>();
+    } catch (_) {}
+
+    if (pinService == null) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const AppShell(),
+          transitionDuration: Duration.zero,
+        ),
+      );
+      return;
+    }
+
+    final pinStatus = await pinService.getPinStatus();
+    if (!mounted) return;
+
+    if (pinStatus.status == PinStatus.storageError) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => SecurityErrorScreen(
+            error: pinStatus.error,
+            onRetry: () => _checkPinAndNavigate(),
+          ),
+        ),
+      );
+    } else if (pinStatus.status == PinStatus.unconfigured) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const LockScreen(
+            mode: LockMode.create,
+            isRoot: true,
+          ),
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LockScreen(
+            mode: LockMode.unlock,
+            isRoot: true,
+          ),
+          transitionDuration: Duration.zero,
+        ),
+      );
+    }
   }
 
   @override

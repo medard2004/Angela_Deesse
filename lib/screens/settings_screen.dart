@@ -87,15 +87,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           index: 4,
           isCard: true,
           child: Panel(
-            onTap: () => push(context, const LockScreen()),
+            onTap: () => push(context, const LockScreen(mode: LockMode.change)),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(children: [
               const _Icon(Icons.lock_outline_rounded),
               const SizedBox(width: 12),
               const Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text("Code d'accès", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                  Text("Aperçu de l'écran de verrouillage", style: TextStyle(color: Pal.slate, fontSize: 11.5)),
+                  Text("Changer le code d'accès", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  Text("Modifier le code PIN et le code de récupération", style: TextStyle(color: Pal.slate, fontSize: 11.5)),
                 ]),
               ),
               const Icon(Icons.chevron_right_rounded, color: Pal.slate, size: 20),

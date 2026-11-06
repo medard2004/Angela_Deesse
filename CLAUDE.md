@@ -291,3 +291,67 @@ Côté serveur (Laravel) :
   - Aucun fichier photo physique n'est supprimé dans cette tranche lors de la suppression logique d'une entité ou du remplacement d'une photo (évite les suppressions orphelines partagées par dédoublonnage).
   - Règle de restauration lors de la future sync : si la ligne SQLite possède un `photo_hash` et que le fichier local manque, la sync le téléchargera depuis Supabase Storage.
   - Ordre imposé lors de la sync : données d'abord (SQLite / Outbox), photos ensuite (fichiers binaires en arrière-plan).
+
+### Tranche Photos (Rattrapage EXIF/GPS, Redressement & Contraintes CHECK — Partie A) — Terminée
+- **Nettoyage binaire EXIF / GPS & Redressement orientation** (`lib/data/utils/jpeg_sanitizer.dart`) :
+  - `readExifOrientation(bytes)` : analyse les segments JPEG pour extraire l'orientation EXIF.
+  - Si orientation != 1 : décodage via `package:image`, redressement physique des pixels (`bakeOrientation`), purge d'EXIF, puis réencodage.
+  - Si orientation == 1 ou image droite : découpage binaire sans perte des segments `APP1` (Exif/GPS/XMP), `APP13` (IPTC), `COM`. Aucun réencodage, zéro perte de qualité.
+  - Le fichier JPEG final ne contient AUCUNE métadonnée EXIF / GPS / IPTC / XMP.
+  - Calcul SHA-256 déterministe sur les octets finaux assainis.
+- **Contraintes CHECK du schéma Drift v1** (`docs/schema-drift.md`, `drift_schemas/drift_schema_v1.json`) :
+  - `CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed'))` sur `modeles`, `realisations`, `orders`, `order_photos`.
+  - `CHECK (op IN ('upsert', 'delete'))` sur `sync_outbox`.
+  - Pas de CHECK sur `orders.status` pour préserver l'extensibilité des statuts de production.
+  - Schéma v1 prêt pour le gel final.
+
+### Tranche Contacts (Appels, WhatsApp et SMS réels — Partie B) — Terminée
+- **Service `ContactLauncher`** (`lib/data/services/contact_launcher.dart`) :
+  - Interface abstraite injectée via `Provider<ContactLauncher>`. Implémentation `DefaultContactLauncher` utilisant `url_launcher: ^6.3.3`.
+  - Lancement direct sans dépendre de `canLaunchUrl`, gestion gracieuse des retours `false` ou exceptions via des messages clairs.
+  - Schémas configurés : `<queries>` (`tel`, `sms`, `https`) dans `AndroidManifest.xml` et `LSApplicationQueriesSchemes` dans `Info.plist`.
+  - Points d'accroche : appel direct `tel:`, SMS avec pré-remplissage (`sms:` avec `?body=` Android / `&body=` iOS), WhatsApp sans ajout au carnet d'adresses (`https://wa.me/<chiffres>?text=<message>`).
+- **Normalisation téléphonique** (`lib/data/utils/phone_normalizer.dart`) :
+  - Fonction pure appliquée au moment du déclenchement, sans jamais altérer les numéros stockés en base.
+  - Nettoyage des espaces, tirets, points, parenthèses. Conservation du `+` initial. `00` initial converti en `+`.
+  - Préfixe d'indicatif par défaut issu du réglage `'default_country_code'` (défaut `"228"`, Togo). Conservation du `0` initial si présent.
+  - Validation de 7 à 15 chiffres. Messages clairs si absent (« Aucun numéro enregistré ») ou invalide (« Numéro invalide »).
+- **Modèles de messages en français** (`lib/data/utils/message_templates.dart`) :
+  - Modèles sans civilité présumée (« Bonjour {nom} » sans « Mme/M. »), montants en FCFA, nom de l'atelier lu depuis les réglages.
+  - Reçu WhatsApp : récapitulatif textuel complet avec données figées du versement (solde après et total à date du reçu). Boutons PDF et thermique maintenus avec SnackBar d'attente.
+- **Aucune écriture en base, aucune entrée outbox** : ces actions sont des interactions de communication sans impact sur les données locales.
+
+### Tranche Sécurité & PIN (Verrouillage PBKDF2, Paliers et Récupération — Partie C) — Terminée
+- **Limites du PIN (règle absolue)** :
+  - Le PIN est un **verrou d'interface utilisateur uniquement**.
+  - Il **n'authentifie JAMAIS l'API** et **ne chiffre pas la base SQLite**.
+  - Avec 4 chiffres (10 000 combinaisons), le hash PBKDF2 n'est qu'un frein calculatoire ; la véritable sécurité repose sur le stockage sécurisé matériel (`flutter_secure_storage`) et le verrouillage progressif.
+- **Dérivation PBKDF2-HMAC-SHA256** (`lib/data/services/pin_security_service.dart`) :
+  - Librairie officielle `package:cryptography: ^2.9.0`.
+  - 30 000 itérations PBKDF2-HMAC-SHA256 mesurées pour ~300-370 ms de temps de dérivation.
+  - Sel aléatoire de 16 octets (`Random.secure()`).
+  - Dérivation hors du thread UI (`Isolate.run`).
+  - Comparaison en temps constant (`constantTimeEquals`) contre les attaques temporelles.
+- **Stockage sécurisé (`flutter_secure_storage: ^11.2.0`)** :
+  - Stocke uniquement : sels (hex), hashs PBKDF2 (hex), nombre d'itérations, compteur d'échecs, échéance de verrouillage et horodatage « dernière vue ».
+  - Aucun secret en clair (ni PIN, ni code de récupération). Rien en base Drift, ni dans les réglages, ni dans les SharedPreferences ordinaires.
+  - Android : `android:allowBackup="false"` dans `AndroidManifest.xml` et `AndroidOptions(resetOnError: false)` pour éviter la désynchronisation clé/données lors d'une sauvegarde cloud.
+  - iOS : premier lancement nettoyant le Keychain résiduel en cas de réinstallation.
+  - Gestion d'erreur fatale : un échec d'accès au stockage sécurisé est traité comme une erreur de sécurité bloquante (`SecurityErrorScreen`), jamais comme « aucun PIN ». La base n'est jamais exposée sans PIN vérifié.
+- **Verrouillage progressif & Garde anti-rembobinage d'horloge** :
+  - Paliers : < 5 échecs : pas de blocage ; 5 échecs : 30 s ; 6 : 1 min ; 7 : 5 min ; 8 : 15 min ; >= 9 : 1 h (palier maximum).
+  - **Incrément avant vérification** : le compteur d'échecs et le verrou éventuel sont systématiquement persistés dans le secure storage AVANT le calcul du hash. Tuer le processus entre deux essais ne permet pas d'échapper au compteur d'échecs.
+  - **Remise à zéro** : tout succès de déverrouillage réinitialise immédiatement le compteur à 0.
+  - **Garde d'horloge** : horodatage `last_seen_time` persistant. Si l'horloge système est reculée, l'échéance `locked_until` est compensée du delta correspondant afin que reculer l'heure ne raccourcisse jamais la durée de verrouillage.
+- **Politique de verrouillage automatique & `runExternal`** (`lib/data/services/app_lock_manager.dart`) :
+  - Verrouillé au démarrage à froid (exige la saisie du PIN avant l'accès aux données).
+  - Verrouillé au retour d'arrière-plan si l'inactivité dépasse 2 minutes (`backgroundLockTimeout = Duration(minutes: 2)`).
+  - **Immunité des actions externes (`runExternal`)** : `ExternalActionTracker.runExternal()` protège les lancements d'appareil photo, galerie (`PhotoStorage.pick`), appels, WhatsApp et SMS (`ContactLauncher`) : aucune mise en arrière-plan pendant une action externe volontaire ne déclenche le verrou au retour.
+  - Android `retrieveLostData` : si l'activité a été tuée pendant une prise de photo, la photo est récupérée et persistée AVANT l'affichage du verrou.
+- **Code de récupération (12 caractères)** :
+  - Généré à la création du PIN : 12 caractères de l'alphabet Crockford Base32 sans ambiguïté (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`), format `XXXX-XXXX-XXXX`.
+  - Affiché UNE SEULE FOIS avec bouton de copie dans le presse-papier (`RecoveryCodeScreen`).
+  - Stocké uniquement sous forme de hash PBKDF2 (sel 16 octets distinct).
+  - Lien « Code d'accès oublié ? » sur l'écran de déverrouillage : saisie du code de récupération (soumise aux mêmes paliers d'échecs) permettant de réinitialiser le PIN sans perte de données.
+  - Aucune réinitialisation destructrice locale. Sans PIN ni code de récupération, affiche un message d'orientation vers le support.
+  - **Question ouverte pour la suite** : procédure de récupération sans code après la mise en place de la synchronisation (réémission d'une clé d'appareil ou validation administrative côté serveur Laravel).
