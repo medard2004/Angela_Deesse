@@ -1,15 +1,49 @@
+import '../data/services/alert_engine.dart';
 import '../ui.dart';
 import '../widgets/order_tile.dart';
+import 'apprentice_detail_screen.dart';
 import 'order_detail_screen.dart';
 
-class _Priority {
-  _Priority(this.icon, this.fg, this.bg, this.title, this.sub, this.orderId);
-  final IconData icon;
-  final Color fg, bg;
-  final String title, sub, orderId;
+const _numberWords = ['Aucune priorité', 'Une priorité', 'Deux priorités', 'Trois priorités', 'Quatre priorités', 'Cinq priorités'];
+
+IconData _alertIcon(AppAlert a) {
+  switch (a.family) {
+    case AlertFamily.fitting:
+      return Icons.schedule_rounded;
+    case AlertFamily.pendingBalance:
+      return Icons.account_balance_wallet_outlined;
+    case AlertFamily.delivery:
+      return a.severity == AlertSeverity.late ? Icons.warning_amber_rounded : Icons.local_shipping_outlined;
+    case AlertFamily.apprenticeDue:
+      return a.severity == AlertSeverity.late ? Icons.warning_amber_rounded : Icons.school_outlined;
+  }
 }
 
-const _numberWords = ['Aucune priorité', 'Une priorité', 'Deux priorités', 'Trois priorités', 'Quatre priorités', 'Cinq priorités'];
+Color _alertFg(AppAlert a) {
+  switch (a.family) {
+    case AlertFamily.fitting:
+      return const Color(0xFFC2570C);
+    case AlertFamily.pendingBalance:
+      return Pal.cobalt;
+    case AlertFamily.delivery:
+      return a.severity == AlertSeverity.late ? Pal.thread : Pal.sage;
+    case AlertFamily.apprenticeDue:
+      return a.severity == AlertSeverity.late ? Pal.thread : Pal.cobalt;
+  }
+}
+
+Color _alertBg(AppAlert a) {
+  switch (a.family) {
+    case AlertFamily.fitting:
+      return const Color(0xFFFFF0E2);
+    case AlertFamily.pendingBalance:
+      return const Color(0xFFE8EDFB);
+    case AlertFamily.delivery:
+      return a.severity == AlertSeverity.late ? const Color(0xFFFBE1E3) : const Color(0xFFDDF3EA);
+    case AlertFamily.apprenticeDue:
+      return a.severity == AlertSeverity.late ? const Color(0xFFFBE1E3) : const Color(0xFFE8EDFB);
+  }
+}
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.onMenu});
@@ -25,19 +59,23 @@ class HomeScreen extends StatelessWidget {
     }).toList();
     final rate = s.punctualityRate;
 
-    final prios = <_Priority>[];
-    for (final o in active) {
-      final first = (s.clientById(o.clientId)?.name ?? 'Client').split(' ').first;
-      final f = o.fittingDate;
-      if (f != null && daysUntil(f) == 0) {
-        final time = f.hour == 0 ? '' : '${fmtTime(f)} · ';
-        prios.add(_Priority(Icons.schedule_rounded, const Color(0xFFC2570C), const Color(0xFFFFF0E2), 'Essayage avec $first', '$time${o.title}', o.id));
-      } else if (o.status == OrderStatus.prete && s.remainingOf(o) > 0) {
-        prios.add(_Priority(Icons.account_balance_wallet_outlined, Pal.cobalt, const Color(0xFFE8EDFB), 'Solde en attente', '$first · ${fcfa(s.remainingOf(o))}', o.id));
-      } else if (daysUntil(o.deliveryDate) == 0) {
-        prios.add(_Priority(Icons.local_shipping_outlined, Pal.sage, const Color(0xFFDDF3EA), "Livraison aujourd'hui", '$first · ${o.title}', o.id));
-      }
-    }
+    const engine = AlertEngine();
+    final allAlerts = engine.currentAlerts(
+      now: DateTime.now(),
+      orders: active,
+      apprentices: s.apprentices,
+      clientById: s.clientById,
+      remainingOfOrder: s.remainingOf,
+      remainingOfApprentice: s.apprenticeRemaining,
+    );
+
+    // Priorités affichées sur l'accueil : aujourd'hui, retards et soldes en attente
+    final prios = allAlerts
+        .where((a) =>
+            a.severity == AlertSeverity.today ||
+            a.severity == AlertSeverity.late ||
+            a.family == AlertFamily.pendingBalance)
+        .toList();
     final upcoming = active.where((o) => daysUntil(o.deliveryDate) >= 0).take(4).toList();
 
     return SectionPage(
@@ -136,21 +174,27 @@ class HomeScreen extends StatelessWidget {
                 StaggeredFadeIn(
                   index: i,
                   child: InkWell(
-                    onTap: () => push(context, OrderDetailScreen(orderId: prios[i].orderId)),
+                    onTap: () {
+                      if (prios[i].targetType == 'apprentice') {
+                        push(context, ApprenticeDetailScreen(apprenticeId: prios[i].targetId));
+                      } else {
+                        push(context, OrderDetailScreen(orderId: prios[i].targetId));
+                      }
+                    },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Row(children: [
                         Container(
                           width: 44, height: 44,
-                          decoration: BoxDecoration(color: prios[i].bg, borderRadius: BorderRadius.circular(14), border: Border.all(color: prios[i].fg.withAlpha(40))),
-                          child: Icon(prios[i].icon, color: prios[i].fg, size: 22),
+                          decoration: BoxDecoration(color: _alertBg(prios[i]), borderRadius: BorderRadius.circular(14), border: Border.all(color: _alertFg(prios[i]).withAlpha(40))),
+                          child: Icon(_alertIcon(prios[i]), color: _alertFg(prios[i]), size: 22),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(prios[i].title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, letterSpacing: -.2)),
                             const SizedBox(height: 2),
-                            Text(prios[i].sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Pal.slate, fontSize: 12.5)),
+                            Text(prios[i].body, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Pal.slate, fontSize: 12.5)),
                           ]),
                         ),
                         const Icon(Icons.chevron_right_rounded, color: Pal.slate, size: 20),

@@ -1,3 +1,4 @@
+import '../data/services/alert_engine.dart';
 import '../data/services/contact_launcher.dart';
 import '../data/utils/message_templates.dart';
 import '../ui.dart';
@@ -5,12 +6,70 @@ import 'apprentice_detail_screen.dart';
 import 'order_detail_screen.dart';
 
 class _Notif {
-  _Notif(this.icon, this.fg, this.bg, this.title, this.sub, this.open, {this.onWhatsApp});
+  _Notif({
+    required this.key,
+    required this.icon,
+    required this.fg,
+    required this.bg,
+    required this.title,
+    required this.sub,
+    required this.open,
+    this.onWhatsApp,
+  });
+
+  final String key;
   final IconData icon;
   final Color fg, bg;
   final String title, sub;
   final void Function(BuildContext) open;
   final Future<void> Function(BuildContext)? onWhatsApp;
+}
+
+IconData _notifIcon(AppAlert a) {
+  switch (a.family) {
+    case AlertFamily.fitting:
+      return Icons.schedule_rounded;
+    case AlertFamily.pendingBalance:
+      return Icons.account_balance_wallet_outlined;
+    case AlertFamily.delivery:
+      return a.severity == AlertSeverity.late
+          ? Icons.warning_amber_rounded
+          : Icons.local_shipping_outlined;
+    case AlertFamily.apprenticeDue:
+      return a.severity == AlertSeverity.late
+          ? Icons.warning_amber_rounded
+          : Icons.school_outlined;
+  }
+}
+
+Color _notifFg(AppAlert a) {
+  switch (a.family) {
+    case AlertFamily.fitting:
+      return const Color(0xFFC2570C);
+    case AlertFamily.pendingBalance:
+      return Pal.cobalt;
+    case AlertFamily.delivery:
+      return a.severity == AlertSeverity.late ? Pal.thread : Pal.sage;
+    case AlertFamily.apprenticeDue:
+      return a.severity == AlertSeverity.late ? Pal.thread : Pal.cobalt;
+  }
+}
+
+Color _notifBg(AppAlert a) {
+  switch (a.family) {
+    case AlertFamily.fitting:
+      return const Color(0xFFFFF0E2);
+    case AlertFamily.pendingBalance:
+      return const Color(0xFFE8EDFB);
+    case AlertFamily.delivery:
+      return a.severity == AlertSeverity.late
+          ? const Color(0xFFFBE1E3)
+          : const Color(0xFFDDF3EA);
+    case AlertFamily.apprenticeDue:
+      return a.severity == AlertSeverity.late
+          ? const Color(0xFFFBE1E3)
+          : const Color(0xFFE8EDFB);
+  }
 }
 
 class NotificationsScreen extends StatefulWidget {
@@ -26,169 +85,93 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppStore>();
-    const peach = Color(0xFFFFF0E2), orange = Color(0xFFC2570C), red = Color(0xFFFBE1E3);
-    final items = <_Notif>[];
     final atelier = s.atelierName;
 
-    for (final o in s.activeOrders) {
-      final client = s.clientById(o.clientId);
-      final who = client?.name ?? 'Client';
-      final phone = client?.phone ?? '';
-      void open(BuildContext c) => push(c, OrderDetailScreen(orderId: o.id));
+    const engine = AlertEngine();
+    final alerts = engine.currentAlerts(
+      now: DateTime.now(),
+      orders: s.activeOrders,
+      apprentices: s.apprentices,
+      clientById: s.clientById,
+      remainingOfOrder: s.remainingOf,
+      remainingOfApprentice: s.apprenticeRemaining,
+    );
 
-      final f = o.fittingDate;
-      final d = daysUntil(o.deliveryDate);
-      if (f != null && daysUntil(f) >= 0 && daysUntil(f) <= 1) {
-        Future<void> onWa(BuildContext c) async {
-          final launcher = c.read<ContactLauncher?>();
-          if (launcher == null) return;
-          final body = MessageTemplates.rappelEssayage(
-            client: who,
-            orderTitle: o.title,
-            fittingDate: f,
-            atelier: atelier,
-          );
-          final res = await launcher.whatsapp(phone, body: body);
-          if (!res.success && c.mounted) {
-            toast(c, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
-          }
+    final items = <_Notif>[];
+
+    for (final a in alerts) {
+      void open(BuildContext c) {
+        if (a.targetType == 'apprentice') {
+          push(c, ApprenticeDetailScreen(apprenticeId: a.targetId));
+        } else {
+          push(c, OrderDetailScreen(orderId: a.targetId));
         }
-
-        items.add(_Notif(
-          Icons.schedule_rounded,
-          orange,
-          peach,
-          daysUntil(f) == 0 ? "Essayage aujourd'hui" : 'Essayage demain',
-          '$who · ${o.title}',
-          open,
-          onWhatsApp: onWa,
-        ));
       }
-      if (d < 0) {
-        Future<void> onWa(BuildContext c) async {
-          final launcher = c.read<ContactLauncher?>();
-          if (launcher == null) return;
-          final String body;
-          if (o.status == OrderStatus.prete) {
-            body = MessageTemplates.commandePrete(
-              client: who,
-              orderTitle: o.title,
-              balance: s.remainingOf(o),
+
+      Future<void> onWa(BuildContext c) async {
+        final launcher = c.read<ContactLauncher?>();
+        if (launcher == null) return;
+        final String body;
+
+        switch (a.family) {
+          case AlertFamily.fitting:
+            body = MessageTemplates.rappelEssayage(
+              client: a.clientName,
+              orderTitle: a.entityTitle,
+              fittingDate: a.fittingDate ?? a.targetDate,
               atelier: atelier,
             );
-          } else {
-            body = MessageTemplates.rappelLivraison(
-              client: who,
-              orderTitle: o.title,
-              deliveryDate: o.deliveryDate,
+            break;
+          case AlertFamily.delivery:
+            if (a.orderStatus == OrderStatus.prete) {
+              body = MessageTemplates.commandePrete(
+                client: a.clientName,
+                orderTitle: a.entityTitle,
+                balance: a.remainingAmount,
+                atelier: atelier,
+              );
+            } else {
+              body = MessageTemplates.rappelLivraison(
+                client: a.clientName,
+                orderTitle: a.entityTitle,
+                deliveryDate: a.deliveryDate ?? a.targetDate,
+                atelier: atelier,
+              );
+            }
+            break;
+          case AlertFamily.pendingBalance:
+            body = MessageTemplates.rappelSoldeDu(
+              client: a.clientName,
+              balance: a.remainingAmount,
               atelier: atelier,
             );
-          }
-          final res = await launcher.whatsapp(phone, body: body);
-          if (!res.success && c.mounted) {
-            toast(c, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
-          }
-        }
-
-        items.add(_Notif(
-          Icons.warning_amber_rounded,
-          Pal.thread,
-          red,
-          'Commande en retard',
-          '$who · ${countdown(o.deliveryDate)}',
-          open,
-          onWhatsApp: onWa,
-        ));
-      } else if (d <= 2) {
-        Future<void> onWa(BuildContext c) async {
-          final launcher = c.read<ContactLauncher?>();
-          if (launcher == null) return;
-          final String body;
-          if (o.status == OrderStatus.prete) {
-            body = MessageTemplates.commandePrete(
-              client: who,
-              orderTitle: o.title,
-              balance: s.remainingOf(o),
+            break;
+          case AlertFamily.apprenticeDue:
+            body = MessageTemplates.echeanceApprenti(
+              apprenti: a.clientName,
+              dueDate: a.nextDueDate ?? a.targetDate,
+              amount: a.remainingAmount,
               atelier: atelier,
             );
-          } else {
-            body = MessageTemplates.rappelLivraison(
-              client: who,
-              orderTitle: o.title,
-              deliveryDate: o.deliveryDate,
-              atelier: atelier,
-            );
-          }
-          final res = await launcher.whatsapp(phone, body: body);
-          if (!res.success && c.mounted) {
-            toast(c, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
-          }
+            break;
         }
 
-        items.add(_Notif(
-          Icons.local_shipping_outlined,
-          Pal.sage,
-          const Color(0xFFDDF3EA),
-          'Livraison ${countdown(o.deliveryDate).toLowerCase()}',
-          '$who · ${o.title}',
-          open,
-          onWhatsApp: onWa,
-        ));
-      }
-      if (o.status == OrderStatus.prete && s.remainingOf(o) > 0) {
-        Future<void> onWa(BuildContext c) async {
-          final launcher = c.read<ContactLauncher?>();
-          if (launcher == null) return;
-          final body = MessageTemplates.rappelSoldeDu(
-            client: who,
-            balance: s.remainingOf(o),
-            atelier: atelier,
-          );
-          final res = await launcher.whatsapp(phone, body: body);
-          if (!res.success && c.mounted) {
-            toast(c, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
-          }
+        final res = await launcher.whatsapp(a.clientPhone, body: body);
+        if (!res.success && c.mounted) {
+          toast(c, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
         }
-
-        items.add(_Notif(
-          Icons.account_balance_wallet_outlined,
-          Pal.cobalt,
-          const Color(0xFFE8EDFB),
-          'Solde en attente',
-          '$who · ${fcfa(s.remainingOf(o))}',
-          open,
-          onWhatsApp: onWa,
-        ));
       }
-    }
-    for (final a in s.apprentices) {
-      final n = a.nextDue;
-      if (n != null && s.apprenticeRemaining(a) > 0 && daysUntil(n) <= 7) {
-        Future<void> onWa(BuildContext c) async {
-          final launcher = c.read<ContactLauncher?>();
-          if (launcher == null) return;
-          final body = MessageTemplates.echeanceApprenti(
-            apprenti: a.name,
-            dueDate: n,
-            amount: s.apprenticeRemaining(a),
-            atelier: atelier,
-          );
-          final res = await launcher.whatsapp(a.phone, body: body);
-          if (!res.success && c.mounted) {
-            toast(c, res.errorMessage ?? 'Impossible d\'ouvrir WhatsApp');
-          }
-        }
 
-        items.add(_Notif(
-          Icons.school_outlined,
-          Pal.cobalt,
-          const Color(0xFFE8EDFB),
-          'Échéance apprenti ${countdown(n).toLowerCase()}',
-          '${a.name} · reste ${fcfa(s.apprenticeRemaining(a))}',
-          (c) => push(c, ApprenticeDetailScreen(apprenticeId: a.id)),
-          onWhatsApp: onWa,
-        ));
-      }
+      items.add(_Notif(
+        key: a.key,
+        icon: _notifIcon(a),
+        fg: _notifFg(a),
+        bg: _notifBg(a),
+        title: a.title,
+        sub: a.body,
+        open: open,
+        onWhatsApp: onWa,
+      ));
     }
 
     return SectionPage(
