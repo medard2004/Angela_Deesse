@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../utils/jpeg_sanitizer.dart';
+
 /// Représentation d'une photo sélectionnée et stockée localement.
 class PickedPhoto {
   final String relativePath; // ex: 'photos/<hash>.jpg'
@@ -106,7 +108,10 @@ class DefaultPhotoStorage implements PhotoStorage {
       throw ArgumentError('Impossible d\'enregistrer une photo vide.');
     }
 
-    final hash = sha256.convert(bytes).toString();
+    // Assainissement des métadonnées (EXIF, GPS, IPTC, XMP) et redressement si nécessaire
+    final cleanBytes = sanitizeJpeg(bytes, quality: PhotoStorage.imageQuality);
+
+    final hash = sha256.convert(cleanBytes).toString();
     final relativePath = 'photos/$hash.jpg';
 
     final photosDir = await _getPhotosDir();
@@ -122,7 +127,7 @@ class DefaultPhotoStorage implements PhotoStorage {
       p.join(photosDir.path, '$hash.jpg.tmp.${DateTime.now().microsecondsSinceEpoch}'),
     );
     try {
-      await tempFile.writeAsBytes(bytes, flush: true);
+      await tempFile.writeAsBytes(cleanBytes, flush: true);
       await tempFile.rename(targetFile.path);
     } catch (e) {
       if (await tempFile.exists()) {

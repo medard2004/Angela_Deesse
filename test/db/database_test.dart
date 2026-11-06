@@ -802,5 +802,121 @@ void main() {
         throwsA(isA<SqliteException>()),
       );
     });
+
+    test('9. CHECK constraints on photo_upload_state and sync_outbox op', () async {
+      final now = DateTime.utc(2026, 11, 6, 12, 0, 0);
+      final clientId = idGen.generate();
+      await db.into(db.clients).insert(
+            ClientsCompanion.insert(
+              id: clientId,
+              name: 'Client Check State',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // 9.1 Modeles.photo_upload_state invalid
+      expect(
+        () async => db.into(db.modeles).insert(
+              ModelesCompanion.insert(
+                id: idGen.generate(),
+                name: 'Modèle Invalide',
+                photoUploadState: const Value('invalid_state'),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            ),
+        throwsA(isA<SqliteException>()),
+      );
+
+      // 9.2 Orders.photo_upload_state invalid
+      expect(
+        () async => db.into(db.orders).insert(
+              OrdersCompanion.insert(
+                id: idGen.generate(),
+                clientId: clientId,
+                title: 'Order Invalide',
+                price: 1000,
+                deliveryDate: now,
+                photoUploadState: const Value('bad_state'),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            ),
+        throwsA(isA<SqliteException>()),
+      );
+
+      // 9.3 Realisations.photo_upload_state invalid
+      expect(
+        () async => db.into(db.realisations).insert(
+              RealisationsCompanion.insert(
+                id: idGen.generate(),
+                photoPath: 'demo:1',
+                photoUploadState: const Value('not_a_state'),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            ),
+        throwsA(isA<SqliteException>()),
+      );
+
+      // 9.4 OrderPhotos.photo_upload_state invalid
+      final orderId = idGen.generate();
+      await db.into(db.orders).insert(
+            OrdersCompanion.insert(
+              id: orderId,
+              clientId: clientId,
+              title: 'Order Valid',
+              price: 1000,
+              deliveryDate: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      expect(
+        () async => db.into(db.orderPhotos).insert(
+              OrderPhotosCompanion.insert(
+                id: idGen.generate(),
+                orderId: orderId,
+                photoPath: 'photos/xyz.jpg',
+                photoUploadState: const Value('bogus'),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            ),
+        throwsA(isA<SqliteException>()),
+      );
+
+      // 9.5 SyncOutbox.op invalid
+      expect(
+        () async => db.into(db.syncOutbox).insert(
+              SyncOutboxCompanion.insert(
+                id: idGen.generate(),
+                entity: 'clients',
+                entityId: clientId,
+                op: 'patch', // only 'upsert' or 'delete' allowed
+                createdAt: now,
+              ),
+            ),
+        throwsA(isA<SqliteException>()),
+      );
+
+      // 9.6 Orders.status is NOT constrained (status can evolve freely)
+      final customStatusOrderId = idGen.generate();
+      await db.into(db.orders).insert(
+            OrdersCompanion.insert(
+              id: customStatusOrderId,
+              clientId: clientId,
+              title: 'Order Future Status',
+              price: 1000,
+              deliveryDate: now,
+              status: const Value('custom_future_status'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final inserted = await (db.select(db.orders)..where((t) => t.id.equals(customStatusOrderId))).getSingle();
+      expect(inserted.status, 'custom_future_status');
+    });
   });
 }

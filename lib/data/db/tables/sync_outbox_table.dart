@@ -14,4 +14,9 @@ class SyncOutbox extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        "CHECK (op IN ('upsert', 'delete'))",
+      ];
 }

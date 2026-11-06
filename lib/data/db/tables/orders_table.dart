@@ -35,5 +35,8 @@ class Orders extends Table {
   Set<Column> get primaryKey => {id};
 
   @override
-  List<String> get customConstraints => ['CHECK (price >= 0)'];
+  List<String> get customConstraints => [
+        'CHECK (price >= 0)',
+        "CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed'))",
+      ];
 }

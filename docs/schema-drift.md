@@ -35,8 +35,12 @@ Ce document décrit le schéma complet de la base de données locale sous Drift 
    - `apprentice_payments.balance_after >= 0`
    - `orders.price >= 0`
    - `apprentices.total_fee >= 0`
-8. **Atomicité Outbox** : La méthode utilitaire `AppDatabase.writeWithOutbox` encapsule la modification métier et l'insertion dans `sync_outbox` dans une transaction SQLite unique (rollback intégral en cas d'échec).
-9. **Sécurité** : Aucun hash de code PIN ni clé d'appareil n'est stocké dans cette base SQLite.
+   - `photo_upload_state IN ('none', 'pending', 'uploaded', 'failed')` sur `modeles`, `orders`, `order_photos`, `realisations`
+   - `sync_outbox.op IN ('upsert', 'delete')`
+   - *(Note : aucun CHECK sur `orders.status` pour permettre l'évolution libre des statuts métier)*
+8. **État du Schéma** : Le schéma Drift SQLite (`schemaVersion = 1`, dump v1 à jour dans `drift_schemas/drift_schema_v1.json`) est validé, durci par contraintes CHECK exhaustives, et est prêt pour le gel. Toute base antérieure de test doit être réinstallée pour intégrer ces contraintes.
+9. **Atomicité Outbox** : La méthode utilitaire `AppDatabase.writeWithOutbox` encapsule la modification métier et l'insertion dans `sync_outbox` dans une transaction SQLite unique (rollback intégral en cas d'échec).
+10. **Sécurité** : Aucun hash de code PIN ni clé d'appareil n'est stocké dans cette base SQLite.
 
 ---
 

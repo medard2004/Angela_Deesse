@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +10,9 @@ import 'package:drift/native.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import 'package:image/image.dart' as img;
 
+import 'package:angela_dress/data/utils/jpeg_sanitizer.dart';
 import 'package:angela_dress/data/db/app_database.dart' as db_layer;
 import 'package:angela_dress/data/db/clock.dart';
 import 'package:angela_dress/data/models.dart';
@@ -299,6 +302,72 @@ void main() {
 
       final absRecovered = await photoStorage.getAbsolutePath(recovered.relativePath);
       expect(File(absRecovered).existsSync(), isTrue);
+    });
+
+    test('9. JPEG assaini : aucune balise GPS, orientation 6 redressée (dimensions et pixels), hash stable et dédoublonné', () async {
+      // 1. Génération d'une image test 40x80 avec balises GPS et Orientation = 6
+      final rawImage = img.Image(width: 40, height: 80);
+      for (int y = 0; y < 80; y++) {
+        for (int x = 0; x < 40; x++) {
+          rawImage.setPixelRgb(x, y, x * 5, y * 3, 120);
+        }
+      }
+      final baseJpg = img.encodeJpg(rawImage);
+
+      // Construction manuelle d'un segment APP1 Exif avec Orientation=6 et GPS
+      final bb = BytesBuilder();
+      bb.add([0x45, 0x78, 0x69, 0x66, 0x00, 0x00]); // Exif\0\0
+      bb.add([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00]); // TIFF header 'II'
+      bb.add([0x02, 0x00]); // 2 tags IFD0
+      // Tag 1: Orientation (0x0112), type SHORT, count 1, val 6
+      bb.add([0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00]);
+      // Tag 2: GPSInfo (0x8825), type LONG, count 1, offset 38
+      bb.add([0x25, 0x88, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x26, 0x00, 0x00, 0x00]);
+      bb.add([0x00, 0x00, 0x00, 0x00]); // next IFD = 0
+      // GPS IFD (offset 38)
+      bb.add([0x01, 0x00]); // 1 tag
+      bb.add([0x00, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00]); // GPSVersionID
+      bb.add([0x00, 0x00, 0x00, 0x00]);
+
+      final exifPayload = bb.toBytes();
+      final app1Len = exifPayload.length + 2;
+
+      final inputWithGpsAndOrientation6 = BytesBuilder();
+      inputWithGpsAndOrientation6.add([0xFF, 0xD8]);
+      inputWithGpsAndOrientation6.add([0xFF, 0xE1, (app1Len >> 8) & 0xFF, app1Len & 0xFF]);
+      inputWithGpsAndOrientation6.add(exifPayload);
+      inputWithGpsAndOrientation6.add(baseJpg.sublist(2));
+
+      final dirtyBytes = inputWithGpsAndOrientation6.toBytes();
+      expect(hasExifOrGpsMetadata(dirtyBytes), isTrue);
+      expect(readExifOrientation(dirtyBytes), equals(6));
+
+      // 2. Traitement par photoStorage.saveBytes
+      final picked1 = await photoStorage.saveBytes(dirtyBytes);
+      final absPath1 = await photoStorage.getAbsolutePath(picked1.relativePath);
+      final storedBytes1 = await File(absPath1).readAsBytes();
+
+      // Vérification 1 : aucune balise EXIF / GPS / IPTC résiduelle
+      expect(hasExifOrGpsMetadata(storedBytes1), isFalse);
+      expect(readExifOrientation(storedBytes1), isNull);
+
+      // Vérification 2 : orientation correcte (dimensions inversées 80x40 car redressée 90° CW)
+      final dims = extractJpegDimensions(storedBytes1);
+      expect(dims, isNotNull);
+      expect(dims!.$1, equals(80)); // width
+      expect(dims.$2, equals(40)); // height
+
+      // Vérification 3 : hash SHA-256 stable
+      expect(picked1.hash, equals(sha256.convert(storedBytes1).toString()));
+
+      // Vérification 4 : deux imports des mêmes octets -> un seul fichier physique dédoublonné
+      final picked2 = await photoStorage.saveBytes(dirtyBytes);
+      expect(picked2.relativePath, equals(picked1.relativePath));
+      expect(picked2.hash, equals(picked1.hash));
+
+      final photosDir = Directory(p.join(tempDir.path, 'photos'));
+      final files = photosDir.listSync().whereType<File>().toList();
+      expect(files.where((f) => f.path.endsWith('${picked1.hash}.jpg')).length, equals(1));
     });
   });
 }

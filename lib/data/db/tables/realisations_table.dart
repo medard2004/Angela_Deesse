@@ -23,4 +23,9 @@ class Realisations extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        "CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed'))",
+      ];
 }
