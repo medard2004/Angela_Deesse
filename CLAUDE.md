@@ -417,4 +417,35 @@ Côté serveur (Laravel) :
   - (c) Push serveur à étudier après la synchronisation.
   - (d) Les actions « Fait » et « Reporter » d'une notification système (Partie C) n'affectent pas les états in-app car le gestionnaire natif d'arrière-plan n'accède à aucune donnée.
 
+### Tranche Rappels Système & Regroupement Anti-Fatigue (Partie C) — Terminée
+- **Service `SystemReminderService`** (`lib/data/services/system_reminder_service.dart`) :
+  - Planification push locale sans serveur ni réseau via `flutter_local_notifications: 22.3.3` et `timezone: 0.11.2`.
+  - Canal sonore `rappels_sonores_v1` avec son d'alarme système (`AudioAttributesUsage.alarm`, `AndroidNotificationCategory.alarm`), vibration active, importance et priorité maximales.
+  - Confidentialité : `NotificationVisibility.private` (masqué sur écran de verrouillage).
+  - Deux boutons d'action natifs Android sur chaque notification :
+    - « Fait » : annule immédiatement la notification sans ouvrir l'application.
+    - « Reporter 10 min » : replanifie la même alarme à +10 minutes (id 31-bit distinct réservé dans la plage snooze `(id | 0x40000000) & 0x7FFFFFFF`).
+  - Gestionnaire d'action en arrière-plan `@pragma('vm:entry-point') notificationActionBackgroundHandler` isolé de SQLite et du réseau.
+  - Clic sur la notification : mémorise `NotificationCenterService.pendingOpenNotifications = true`, ouvrant directement l'application sur le centre de notifications une fois le code PIN saisi avec succès.
+- **Regroupement anti-fatigue à la minute (`AlertEngine.groupedPlannedReminders`)** :
+  - Fusion à la minute exacte des rappels simultanés : si n = 1, notification individuelle ; si n >= 2, titre « n rappels », corps jusqu'à 4 lignes + « + k autres ».
+  - Identifiant 31-bit stable déterministe (sans collision).
+  - Plafond strict de 120 notifications planifiées (sécurité Android).
+- **Replanification automatique et debounced (Décision 20)** :
+  - Replanification déclenchée au démarrage de l'app, au retour en premier plan (`resumed`), et lors de tout changement d'entité (commandes, apprentis, réglages).
+  - Temporisation anti-rafale (debounce de 500 ms) pour protéger le système.
+  - Idempotence : `cancel` ciblé des notifications de type `plan` uniquement, préservant les reports temporaires `snooze`.
+
+### Tranche Écran Guidé & Diagnostic pour la Release (Partie D) — Terminée
+- **Écran `ReminderGuideScreen`** (`lib/screens/reminder_guide_screen.dart`) :
+  - Accessible depuis `SettingsScreen` (ligne dédiée « Pour que les rappels sonnent » avec icône et chevron).
+  - Proposé une seule fois via dialogue doux lors de la première activation d'un interrupteur de rappel (mémorisé dans settings `reminder_guide_dismissed`).
+  - Diagnostic en direct : état de la permission `POST_NOTIFICATIONS`, état des alarmes exactes (`canScheduleExactAlarms`), état des optimisations batterie via `app_settings: 9.0.1`.
+  - Détection automatique du constructeur via `device_info_plus: 13.3.0` :
+    - Détection ciblée Transsion (Tecno, Infinix, Itel) : encadré d'instructions claires pour l'application Phone Master, le démarrage automatique et le verrouillage par cadenas dans les applications récentes.
+    - Détection Xiaomi / Redmi et Samsung avec conseils adaptés.
+  - Récapitulatif : nombre de rappels planifiés et heure du prochain rappel (sans noms de clients pour préserver la vie privée).
+  - Tests de sonnerie en conditions réelles : boutons « Dans 1 min » et « Dans 30 min » permettant à la couturière de poser son téléphone verrouillé sur l'établi et de vérifier que l'alarme retentit bien en veille prolongée.
+
+
 

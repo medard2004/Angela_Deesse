@@ -89,3 +89,41 @@ Actuellement, l'icône d'application utilise le logo par défaut. Pour installer
 3. Exécuter `dart run flutter_launcher_icons`.
 4. Ne jamais modifier l'identifiant technique `com.digitalvision.angela_dress` (qui définit l'identité Android de l'application).
 
+---
+
+## 6. Permissions Android & Justification Google Play
+
+L'application Angela Déesse déclare les permissions suivantes dans `android/app/src/main/AndroidManifest.xml` :
+
+| Permission | Rôle & Usage |
+|---|---|
+| `POST_NOTIFICATIONS` | Requis à partir d'Android 13 (API 33) pour afficher les notifications à l'utilisateur. Demandée de façon guidée et contextuelle. |
+| `USE_EXACT_ALARM` | Requis à partir d'Android 13 pour planifier des alarmes exactes (sonnerie à la minute précise pour essayages et livraisons). Accordée d'office sans écran de permission système supplémentaire. |
+| `SCHEDULE_EXACT_ALARM` (`maxSdkVersion="32"`) | Requis sur Android 12 et 12L (API 31-32) pour les alarmes précises. |
+| `RECEIVE_BOOT_COMPLETED` | Permet aux récepteurs `ScheduledNotificationBootReceiver` de reprogrammer les rappels au redémarrage du téléphone sans ouvrir l'application. |
+| `VIBRATE` | Déclenche la vibration physique conjointe à la sonnerie d'alarme. |
+
+### Justification requise pour la déclaration Google Play de `USE_EXACT_ALARM`
+Pour toute publication sur Google Play Store avec la permission `USE_EXACT_ALARM`, Google exige de justifier que la fonctionnalité principale repose sur des actions à heure exacte.
+
+- **Catégorie d'application** : Productivité / Rappels et Calendrier d'atelier.
+- **Formulation de justification pour la console Play** :
+  > « Angela Déesse est une application de gestion de production d'atelier de couture sur mesure. La ponctualité des essayages et des livraisons de tenues confectionnées (mariages, cérémonies) constitue la fonction opérationnelle critique de l'artisan. L'application planifie des rappels sonores d'alarme à des heures précises (ex. 08:00 pour la livraison du jour, heure fixée du rendez-vous d'essayage) pour réveiller ou avertir la couturière même lorsque l'appareil est posé en veille prolongée sur l'établi. L'utilisation d'alarmes inexactes décalerait ces rendez-vous et porterait préjudice direct à la relation client de l'atelier. »
+
+---
+
+## 7. Recommandations constructeurs pour le déploiement sur smartphones
+
+L'application intègre un écran d'aide dédié accessible depuis **Paramètres > Pour que les rappels sonnent** (`ReminderGuideScreen`), avec détection automatique du fabricant de l'appareil (`device_info_plus`) :
+
+1. **Téléphones Transsion (Tecno, Infinix, itel)** (très répandus en Afrique de l'Ouest) :
+   - Ces constructeurs intègrent un gestionnaire d'alimentation agressif (**Phone Master** / **Gestionnaire**).
+   - L'écran guidé indique à la couturière d'activer le démarrage automatique pour Angela Déesse et d'appliquer le cadenas sur l'application dans le carrousel des applications récentes.
+2. **Téléphones Xiaomi / Redmi (MIUI / HyperOS)** :
+   - Autoriser le « Démarrage automatique » et sélectionner « Pas de restrictions » dans l'économiseur de batterie.
+3. **Téléphones Samsung (One UI)** :
+   - Ajouter Angela Déesse dans « Applications jamais en veille » dans les paramètres de batterie.
+4. **Vérification par la couturière** :
+   - Deux boutons de test (« Dans 1 min » et « Dans 30 min ») permettent à l'utilisatrice de valider la sonnerie sur son propre téléphone avant toute utilisation en conditions réelles.
+
+
