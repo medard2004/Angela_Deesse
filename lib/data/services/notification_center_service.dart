@@ -26,6 +26,12 @@ class NotificationCenterService extends ChangeNotifier {
   /// Destination en attente après déverrouillage du code PIN (Décision 12).
   static bool pendingOpenNotifications = false;
 
+  /// Déclenche une demande d'ouverture vers NotificationsScreen (ex: tap sur notification système).
+  void requestOpenNotifications() {
+    pendingOpenNotifications = true;
+    notifyListeners();
+  }
+
   static Future<NotificationCenterService> create([SharedPreferences? prefs]) async {
     final p = prefs ?? await SharedPreferences.getInstance();
     return NotificationCenterService(p);

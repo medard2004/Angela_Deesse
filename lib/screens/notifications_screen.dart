@@ -236,7 +236,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 tooltip: 'Envoyer WhatsApp',
                                 onPressed: () => items[i].onWhatsApp!(context),
                               ),
-                            if (!isRead) const PulsingIndicator(size: 9, color: Pal.orange),
+                            if (!isRead)
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Pal.orange,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                           ]),
                         ),
                       ),

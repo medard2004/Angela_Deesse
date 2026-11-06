@@ -54,6 +54,18 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifService = context.watch<NotificationCenterService?>();
+    if (notifService != null && NotificationCenterService.pendingOpenNotifications) {
+      NotificationCenterService.pendingOpenNotifications = false;
+      if (_current != Section.notifications) {
+        _current = Section.notifications;
+      }
+    }
+  }
+
   void _go(Section s) => setState(() => _current = s);
   void _menu() => _key.currentState?.openDrawer();
 

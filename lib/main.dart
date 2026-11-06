@@ -10,6 +10,7 @@ import 'data/services/notification_center_service.dart';
 import 'data/services/photo_storage.dart';
 import 'data/services/pin_security_service.dart';
 import 'data/services/secure_storage.dart';
+import 'data/services/system_reminder_service.dart';
 import 'data/store.dart';
 
 Future<void> main() async {
@@ -32,6 +33,12 @@ Future<void> main() async {
     tracker: externalActionTracker,
   );
   final notificationCenterService = await NotificationCenterService.create();
+  final systemReminderService = SystemReminderService();
+  await systemReminderService.init(
+    onSelectNotification: (_) {
+      notificationCenterService.requestOpenNotifications();
+    },
+  );
 
   runApp(
     MultiProvider(
@@ -42,8 +49,9 @@ Future<void> main() async {
         Provider<SecureStorage>.value(value: secureStorage),
         Provider<PinSecurityService>.value(value: pinSecurityService),
         Provider<AppLockManager>.value(value: appLockManager),
+        Provider<SystemReminderService>.value(value: systemReminderService),
         ChangeNotifierProvider<NotificationCenterService>.value(value: notificationCenterService),
-        ChangeNotifierProvider(create: (_) => AppStore()),
+        ChangeNotifierProvider(create: (_) => AppStore(reminderService: systemReminderService)),
       ],
       child: const AngelaApp(),
     ),

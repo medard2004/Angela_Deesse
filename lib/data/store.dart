@@ -17,6 +17,7 @@ import 'repositories/order_repository.dart';
 import 'repositories/payment_repository.dart';
 import 'repositories/realisation_repository.dart';
 import 'repositories/settings_repository.dart';
+import 'services/system_reminder_service.dart';
 import 'utils/sort_utils.dart';
 
 IdGenerator defaultIdGenerator = const UuidV7IdGenerator();
@@ -40,6 +41,7 @@ class AppStore extends ChangeNotifier {
     ApprenticePaymentRepository? apprenticePaymentRepository,
     SettingsRepository? settingsRepository,
     FinanceRepository? financeRepository,
+    SystemReminderService? reminderService,
   }) : this._(
           db ?? AppDatabase(),
           clock ?? const SystemClock(),
@@ -53,6 +55,7 @@ class AppStore extends ChangeNotifier {
           apprenticePaymentRepository,
           settingsRepository,
           financeRepository,
+          reminderService,
         );
 
   AppStore._(
@@ -68,6 +71,7 @@ class AppStore extends ChangeNotifier {
     ApprenticePaymentRepository? apprenticePaymentRepository,
     SettingsRepository? settingsRepository,
     FinanceRepository? financeRepository,
+    this._reminderService,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db, clock: _clock),
         _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db, clock: _clock),
         _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db, clock: _clock),
@@ -91,6 +95,7 @@ class AppStore extends ChangeNotifier {
   final ApprenticePaymentRepository _apprenticePaymentRepo;
   final SettingsRepository _settingsRepo;
   final FinanceRepository _financeRepo;
+  final SystemReminderService? _reminderService;
 
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
@@ -153,6 +158,7 @@ class AppStore extends ChangeNotifier {
     final str = v ? 'true' : 'false';
     await _settingsRepo.set(kSettingNotifDelivery, str);
     _settingsMap[kSettingNotifDelivery] = str;
+    _triggerReminderReschedule();
     notifyListeners();
   }
 
@@ -160,6 +166,7 @@ class AppStore extends ChangeNotifier {
     final str = v ? 'true' : 'false';
     await _settingsRepo.set(kSettingNotifFitting, str);
     _settingsMap[kSettingNotifFitting] = str;
+    _triggerReminderReschedule();
     notifyListeners();
   }
 
@@ -167,6 +174,7 @@ class AppStore extends ChangeNotifier {
     final str = v ? 'true' : 'false';
     await _settingsRepo.set(kSettingNotifPayments, str);
     _settingsMap[kSettingNotifPayments] = str;
+    _triggerReminderReschedule();
     notifyListeners();
   }
 
@@ -174,6 +182,7 @@ class AppStore extends ChangeNotifier {
     final str = v ? 'true' : 'false';
     await _settingsRepo.set(kSettingNotifLate, str);
     _settingsMap[kSettingNotifLate] = str;
+    _triggerReminderReschedule();
     notifyListeners();
   }
 
@@ -248,30 +257,35 @@ class AppStore extends ChangeNotifier {
     _orderSub?.cancel();
     _orderSub = _orderRepo.watchAll().listen((list) {
       orders = _sortOrders(list);
+      _triggerReminderReschedule();
       notifyListeners();
     });
 
     _paymentSub?.cancel();
     _paymentSub = _paymentRepo.watchAll().listen((list) {
       clientPayments = _sortPayments(list);
+      _triggerReminderReschedule();
       notifyListeners();
     });
 
     _apprenticeSub?.cancel();
     _apprenticeSub = _apprenticeRepo.watchAll().listen((list) {
       apprentices = _sortApprentices(list);
+      _triggerReminderReschedule();
       notifyListeners();
     });
 
     _apprenticePaymentSub?.cancel();
     _apprenticePaymentSub = _apprenticePaymentRepo.watchAll().listen((list) {
       apprenticePayments = _sortApprenticePayments(list);
+      _triggerReminderReschedule();
       notifyListeners();
     });
 
     _settingsSub?.cancel();
     _settingsSub = _settingsRepo.watchAll().listen((map) {
       _settingsMap = Map<String, String>.from(map);
+      _triggerReminderReschedule();
       notifyListeners();
     });
 
@@ -284,7 +298,41 @@ class AppStore extends ChangeNotifier {
     await _db.reconcileReceiptCounters();
 
     _initialized = true;
+    _triggerReminderReschedule();
     notifyListeners();
+  }
+
+  /// Déclenche une replanification automatique debounced des rappels système (Décision 20).
+  void _triggerReminderReschedule() {
+    _reminderService?.scheduleRescheduleDebounced(
+      orders: orders,
+      apprentices: apprentices,
+      clientById: (id) => clientById(id),
+      remainingOfOrder: (o) => remainingOf(o),
+      remainingOfApprentice: (a) => apprenticeRemaining(a),
+      deliveryEnabled: notifDelivery,
+      fittingEnabled: notifFitting,
+      paymentsEnabled: notifPayments,
+    );
+  }
+
+  /// Replanifie immédiatement ou de façon debouncée les rappels système.
+  void rescheduleReminders({bool immediate = false}) {
+    if (!_initialized) return;
+    if (immediate) {
+      _reminderService?.rescheduleAll(
+        orders: orders,
+        apprentices: apprentices,
+        clientById: (id) => clientById(id),
+        remainingOfOrder: (o) => remainingOf(o),
+        remainingOfApprentice: (a) => apprenticeRemaining(a),
+        deliveryEnabled: notifDelivery,
+        fittingEnabled: notifFitting,
+        paymentsEnabled: notifPayments,
+      );
+    } else {
+      _triggerReminderReschedule();
+    }
   }
 
   @override

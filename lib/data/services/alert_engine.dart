@@ -112,6 +112,30 @@ class PlannedReminder {
       'PlannedReminder(id: $id, scheduledAt: $scheduledAt, alertKey: $alertKey)';
 }
 
+/// Notification système groupée prête pour le planificateur Android (Décision 15).
+class GroupedReminder {
+  const GroupedReminder({
+    required this.id,
+    required this.scheduledAt,
+    required this.title,
+    required this.body,
+    required this.alertKeys,
+    required this.isGroup,
+  });
+
+  /// Identifiant entier 31-bit stable sans collision pour le système Android.
+  final int id;
+  final DateTime scheduledAt;
+  final String title;
+  final String body;
+  final List<String> alertKeys;
+  final bool isGroup;
+
+  @override
+  String toString() =>
+      'GroupedReminder(id: $id, scheduledAt: $scheduledAt, title: $title, count: ${alertKeys.length})';
+}
+
 /// Moteur d'alertes unique (Dart pur, sans dépendance de plugin).
 /// Alimente l'accueil, NotificationsScreen et les rappels système planifiés.
 class AlertEngine {
@@ -536,6 +560,94 @@ class AlertEngine {
 
     reminders.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     return reminders;
+  }
+
+  /// Génère les rappels système groupés par instant à la minute (Décision 15).
+  /// Fusion anti-fatigue : n=1 rappel individuel, n>=2 titre « n rappels » et corps en lignes.
+  /// Plafond de 120 notifications, les plus proches d'abord.
+  List<GroupedReminder> groupedPlannedReminders({
+    required DateTime now,
+    required List<Order> orders,
+    required List<Apprentice> apprentices,
+    required Client? Function(String clientId) clientById,
+    required int Function(Order order) remainingOfOrder,
+    required int Function(Apprentice apprentice) remainingOfApprentice,
+    bool deliveryEnabled = true,
+    bool fittingEnabled = true,
+    bool paymentsEnabled = true,
+    int maxWindowDays = 45,
+    int maxReminders = 120,
+  }) {
+    final raw = plannedReminders(
+      now: now,
+      orders: orders,
+      apprentices: apprentices,
+      clientById: clientById,
+      remainingOfOrder: remainingOfOrder,
+      remainingOfApprentice: remainingOfApprentice,
+      deliveryEnabled: deliveryEnabled,
+      fittingEnabled: fittingEnabled,
+      paymentsEnabled: paymentsEnabled,
+      maxWindowDays: maxWindowDays,
+    );
+
+    if (raw.isEmpty) return const [];
+
+    // Regroupement par instant à la minute
+    final groups = <DateTime, List<PlannedReminder>>{};
+    for (final r in raw) {
+      final minute = DateTime(
+        r.scheduledAt.year,
+        r.scheduledAt.month,
+        r.scheduledAt.day,
+        r.scheduledAt.hour,
+        r.scheduledAt.minute,
+      );
+      groups.putIfAbsent(minute, () => []).add(r);
+    }
+
+    final sortedMinutes = groups.keys.toList()..sort();
+    final result = <GroupedReminder>[];
+
+    for (final minute in sortedMinutes) {
+      if (result.length >= maxReminders) break;
+
+      final items = groups[minute]!;
+      // Identifiant entier 31-bit positif dérivé de la minute
+      final int id = (minute.millisecondsSinceEpoch ~/ 60000) & 0x7FFFFFFF;
+
+      if (items.length == 1) {
+        final single = items.first;
+        result.add(GroupedReminder(
+          id: id,
+          scheduledAt: single.scheduledAt,
+          title: single.title,
+          body: single.body,
+          alertKeys: [single.alertKey],
+          isGroup: false,
+        ));
+      } else {
+        final title = '${items.length} rappels';
+        final lines = <String>[];
+        for (var i = 0; i < items.length && i < 4; i++) {
+          lines.add('• ${items[i].title} : ${items[i].body}');
+        }
+        if (items.length > 4) {
+          lines.add('+ ${items.length - 4} autres');
+        }
+
+        result.add(GroupedReminder(
+          id: id,
+          scheduledAt: minute,
+          title: title,
+          body: lines.join('\n'),
+          alertKeys: items.map((e) => e.alertKey).toList(),
+          isGroup: true,
+        ));
+      }
+    }
+
+    return result;
   }
 }
 

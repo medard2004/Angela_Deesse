@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/app_brand.dart';
 import 'core/theme.dart';
 import 'data/services/app_lock_manager.dart';
+import 'data/store.dart';
 import 'screens/lock_screen.dart';
 import 'screens/splash_screen.dart';
 
@@ -54,6 +55,11 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
       _lockManager?.onAppPaused();
     } else if (state == AppLifecycleState.resumed) {
       _lockManager?.onAppResumed();
+      try {
+        context.read<AppStore>().rescheduleReminders();
+      } catch (_) {
+        // En cas de test isolé sans AppStore
+      }
     }
   }
 

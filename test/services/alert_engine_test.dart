@@ -461,6 +461,245 @@ void main() {
             reason: 'Invariant violé pour ${reminder.alertKey} à ${reminder.scheduledAt}');
       }
     });
+
+    test('Invariant vérifié sur groupedPlannedReminders (vraie sortie)', () {
+      final baseNow = DateTime(2026, 11, 6, 9, 0);
+      final orders = [
+        Order(
+          id: 'ord-g1',
+          clientId: 'c1',
+          title: 'Robe G1',
+          price: 20000,
+          deliveryDate: DateTime(2026, 11, 8),
+          createdAt: baseNow,
+        ),
+        Order(
+          id: 'ord-g2',
+          clientId: 'c1',
+          title: 'Robe G2',
+          price: 20000,
+          deliveryDate: DateTime(2026, 11, 8),
+          createdAt: baseNow,
+        ),
+      ];
+
+      final grouped = engine.groupedPlannedReminders(
+        now: baseNow,
+        orders: orders,
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+      );
+
+      expect(grouped, isNotEmpty);
+      for (final g in grouped) {
+        final alertsAtT = engine.currentAlerts(
+          now: g.scheduledAt,
+          orders: orders,
+          apprentices: [],
+          clientById: (_) => client,
+          remainingOfOrder: (_) => 5000,
+          remainingOfApprentice: (_) => 0,
+        );
+
+        for (final alertKey in g.alertKeys) {
+          final match = alertsAtT.any((a) => a.key == alertKey);
+          expect(match, isTrue, reason: 'Alerte $alertKey absente de currentAlerts à ${g.scheduledAt}');
+        }
+      }
+    });
+  });
+
+  group('Regroupement anti-fatigue (Décision 15)', () {
+    const engine = AlertEngine();
+    final client = Client(id: 'c1', name: 'Amina', phone: '+22890000000');
+
+    test('1 rappel individuel : isGroup = false, titre et corps d\'origine', () {
+      final now = DateTime(2026, 11, 6, 8, 0);
+      final orders = [
+        Order(
+          id: 'o1',
+          clientId: 'c1',
+          title: 'Robe Unique',
+          price: 15000,
+          deliveryDate: DateTime(2026, 11, 7), // demain
+          createdAt: now,
+        ),
+      ];
+
+      final grouped = engine.groupedPlannedReminders(
+        now: now,
+        orders: orders,
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+      );
+
+      // Deux rappels : veille 18h et jour même 8h
+      expect(grouped.length, equals(2));
+      final eve = grouped.firstWhere((g) => g.scheduledAt.hour == 18);
+      expect(eve.isGroup, isFalse);
+      expect(eve.title, equals('Livraison demain'));
+      expect(eve.alertKeys.length, equals(1));
+    });
+
+    test('5 rappels au même instant : titre "5 rappels", 4 lignes max + "+ 1 autres"', () {
+      final now = DateTime(2026, 11, 6, 8, 0);
+      final sameDeliveryDate = DateTime(2026, 11, 10);
+
+      final orders = List.generate(
+        5,
+        (i) => Order(
+          id: 'o-$i',
+          clientId: 'c1',
+          title: 'Modèle $i',
+          price: 15000,
+          deliveryDate: sameDeliveryDate,
+          createdAt: now,
+        ),
+      );
+
+      final grouped = engine.groupedPlannedReminders(
+        now: now,
+        orders: orders,
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+      );
+
+      // Les 5 commandes sont prévues le même jour -> fusionnées la veille à 18h et le jour même à 8h
+      expect(grouped.length, equals(2));
+      final eveGroup = grouped.firstWhere((g) => g.scheduledAt.hour == 18);
+      expect(eveGroup.isGroup, isTrue);
+      expect(eveGroup.title, equals('5 rappels'));
+      expect(eveGroup.alertKeys.length, equals(5));
+
+      final lines = eveGroup.body.split('\n');
+      expect(lines.length, equals(5)); // 4 puces + 1 ligne "+ 1 autres"
+      expect(lines.last, equals('+ 1 autres'));
+    });
+
+    test('Instants différents ne sont pas fusionnés', () {
+      final now = DateTime(2026, 11, 6, 8, 0);
+      final orders = [
+        Order(
+          id: 'o1',
+          clientId: 'c1',
+          title: 'Modèle 1',
+          price: 15000,
+          deliveryDate: DateTime(2026, 11, 8),
+          createdAt: now,
+        ),
+        Order(
+          id: 'o2',
+          clientId: 'c1',
+          title: 'Modèle 2',
+          price: 15000,
+          deliveryDate: DateTime(2026, 11, 12),
+          createdAt: now,
+        ),
+      ];
+
+      final grouped = engine.groupedPlannedReminders(
+        now: now,
+        orders: orders,
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+      );
+
+      // o1 (veille 18h, jour 8h) et o2 (veille 18h, jour 8h) à des dates différentes -> 4 notifications distinctes
+      expect(grouped.length, equals(4));
+      for (final g in grouped) {
+        expect(g.isGroup, isFalse);
+      }
+    });
+
+    test('Plafond de 120 notifications respecté', () {
+      final now = DateTime(2026, 11, 6, 8, 0);
+      // 100 commandes sur des jours différents
+      final orders = List.generate(
+        100,
+        (i) => Order(
+          id: 'o-cap-$i',
+          clientId: 'c1',
+          title: 'Modèle $i',
+          price: 10000,
+          deliveryDate: now.add(Duration(days: (i % 40) + 2)),
+          createdAt: now,
+        ),
+      );
+
+      final grouped = engine.groupedPlannedReminders(
+        now: now,
+        orders: orders,
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+        maxReminders: 120,
+      );
+
+      expect(grouped.length, lessThanOrEqualTo(120));
+    });
+  });
+
+  group('Stabilité des clés pour conditions persistantes (Horloge qui avance)', () {
+    const engine = AlertEngine();
+    final client = Client(id: 'c1', name: 'Amina');
+
+    test('Une commande en retard conserve rigoureusement la MÊME clé sur plusieurs jours consécutifs', () {
+      final targetDate = DateTime(2026, 11, 5);
+      final order = Order(
+        id: 'ord-late-stable',
+        clientId: 'c1',
+        title: 'Robe Retardée',
+        price: 20000,
+        deliveryDate: targetDate,
+        createdAt: DateTime(2026, 10, 1),
+      );
+
+      // Jour 1 de retard (6 nov)
+      final alertsDay1 = engine.currentAlerts(
+        now: DateTime(2026, 11, 6, 9, 0),
+        orders: [order],
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+      );
+      final keyDay1 = alertsDay1.first.key;
+
+      // Jour 2 de retard (7 nov)
+      final alertsDay2 = engine.currentAlerts(
+        now: DateTime(2026, 11, 7, 9, 0),
+        orders: [order],
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+      );
+      final keyDay2 = alertsDay2.first.key;
+
+      // Jour 5 de retard (10 nov)
+      final alertsDay5 = engine.currentAlerts(
+        now: DateTime(2026, 11, 10, 9, 0),
+        orders: [order],
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 5000,
+        remainingOfApprentice: (_) => 0,
+      );
+      final keyDay5 = alertsDay5.first.key;
+
+      expect(keyDay1, equals('livraison:retard:ord-late-stable:2026-11-05'));
+      expect(keyDay2, equals(keyDay1));
+      expect(keyDay5, equals(keyDay1));
+    });
   });
 }
 
