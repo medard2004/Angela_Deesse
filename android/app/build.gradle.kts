@@ -20,7 +20,7 @@ if (hasReleaseKey) {
 }
 
 android {
-    namespace = "com.example.angela_dress"
+    namespace = "com.digitalvision.angela_dress"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.angela_dress"
+        applicationId = "com.digitalvision.angela_dress"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
