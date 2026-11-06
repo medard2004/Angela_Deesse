@@ -76,6 +76,7 @@ class DriftModeleRepository implements ModeleRepository {
       entity: 'modeles',
       entityId: modele.id,
       op: 'upsert',
+      timestamp: now,
       action: () async {
         await db.into(db.modeles).insertOnConflictUpdate(
               db_layer.ModelesCompanion(
@@ -100,6 +101,7 @@ class DriftModeleRepository implements ModeleRepository {
       entity: 'modeles',
       entityId: id,
       op: 'delete',
+      timestamp: now,
       action: () async {
         await (db.update(db.modeles)..where((t) => t.id.equals(id))).write(
           db_layer.ModelesCompanion(

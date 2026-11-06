@@ -113,6 +113,7 @@ class DriftRealisationRepository implements RealisationRepository {
       entity: 'realisations',
       entityId: realisation.id,
       op: 'upsert',
+      timestamp: now,
       action: () async {
         await db.into(db.realisations).insertOnConflictUpdate(
               db_layer.RealisationsCompanion(
@@ -138,6 +139,7 @@ class DriftRealisationRepository implements RealisationRepository {
       entity: 'realisations',
       entityId: id,
       op: 'delete',
+      timestamp: now,
       action: () async {
         await (db.update(db.realisations)..where((t) => t.id.equals(id))).write(
           db_layer.RealisationsCompanion(

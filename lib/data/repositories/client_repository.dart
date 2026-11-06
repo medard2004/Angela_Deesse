@@ -69,6 +69,7 @@ class DriftClientRepository implements ClientRepository {
       entity: 'clients',
       entityId: client.id,
       op: 'upsert',
+      timestamp: now,
       action: () async {
         await db.into(db.clients).insertOnConflictUpdate(
               db_layer.ClientsCompanion(

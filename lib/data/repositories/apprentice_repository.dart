@@ -121,6 +121,7 @@ class DriftApprenticeRepository implements ApprenticeRepository {
       entity: 'apprentices',
       entityId: apprentice.id,
       op: 'upsert',
+      timestamp: now,
       action: () async {
         await db.into(db.apprentices).insertOnConflictUpdate(
               db_layer.ApprenticesCompanion(
@@ -245,6 +246,7 @@ class DriftApprenticeRepository implements ApprenticeRepository {
       entity: 'apprentices',
       entityId: id,
       op: 'delete',
+      timestamp: now,
       action: () async {
         await (db.update(db.apprentices)..where((t) => t.id.equals(id))).write(
           db_layer.ApprenticesCompanion(

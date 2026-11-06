@@ -92,6 +92,7 @@ class DriftMeasurementRepository implements MeasurementRepository {
       entity: 'measurements',
       entityId: measurement.id,
       op: 'upsert',
+      timestamp: now,
       action: () async {
         await db.into(db.measurements).insertOnConflictUpdate(
               db_layer.MeasurementsCompanion(
@@ -116,6 +117,7 @@ class DriftMeasurementRepository implements MeasurementRepository {
       entity: 'measurements',
       entityId: id,
       op: 'delete',
+      timestamp: now,
       action: () async {
         await (db.update(db.measurements)..where((t) => t.id.equals(id))).write(
           db_layer.MeasurementsCompanion(

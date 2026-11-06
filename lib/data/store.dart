@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../core/format.dart';
 import 'db/app_database.dart' show AppDatabase;
+import 'db/clock.dart';
 import 'db/demo_seeder.dart';
 import 'db/id_generator.dart';
 import 'models.dart';
@@ -28,6 +29,7 @@ String newId() => defaultIdGenerator.generate();
 class AppStore extends ChangeNotifier {
   AppStore({
     AppDatabase? db,
+    Clock? clock,
     ClientRepository? clientRepository,
     MeasurementRepository? measurementRepository,
     ModeleRepository? modeleRepository,
@@ -40,6 +42,7 @@ class AppStore extends ChangeNotifier {
     FinanceRepository? financeRepository,
   }) : this._(
           db ?? AppDatabase(),
+          clock ?? const SystemClock(),
           clientRepository,
           measurementRepository,
           modeleRepository,
@@ -54,6 +57,7 @@ class AppStore extends ChangeNotifier {
 
   AppStore._(
     this._db,
+    this._clock,
     ClientRepository? clientRepository,
     MeasurementRepository? measurementRepository,
     ModeleRepository? modeleRepository,
@@ -64,18 +68,19 @@ class AppStore extends ChangeNotifier {
     ApprenticePaymentRepository? apprenticePaymentRepository,
     SettingsRepository? settingsRepository,
     FinanceRepository? financeRepository,
-  )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db),
-        _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db),
-        _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db),
-        _realisationRepo = realisationRepository ?? DriftRealisationRepository(db: _db),
-        _orderRepo = orderRepository ?? DriftOrderRepository(db: _db),
-        _paymentRepo = paymentRepository ?? DriftPaymentRepository(db: _db),
-        _apprenticeRepo = apprenticeRepository ?? DriftApprenticeRepository(db: _db),
-        _apprenticePaymentRepo = apprenticePaymentRepository ?? DriftApprenticePaymentRepository(db: _db),
-        _settingsRepo = settingsRepository ?? DriftSettingsRepository(db: _db),
-        _financeRepo = financeRepository ?? DriftFinanceRepository(db: _db);
+  )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db, clock: _clock),
+        _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db, clock: _clock),
+        _modeleRepo = modeleRepository ?? DriftModeleRepository(db: _db, clock: _clock),
+        _realisationRepo = realisationRepository ?? DriftRealisationRepository(db: _db, clock: _clock),
+        _orderRepo = orderRepository ?? DriftOrderRepository(db: _db, clock: _clock),
+        _paymentRepo = paymentRepository ?? DriftPaymentRepository(db: _db, clock: _clock),
+        _apprenticeRepo = apprenticeRepository ?? DriftApprenticeRepository(db: _db, clock: _clock),
+        _apprenticePaymentRepo = apprenticePaymentRepository ?? DriftApprenticePaymentRepository(db: _db, clock: _clock),
+        _settingsRepo = settingsRepository ?? DriftSettingsRepository(db: _db, clock: _clock),
+        _financeRepo = financeRepository ?? DriftFinanceRepository(db: _db, clock: _clock);
 
   final AppDatabase _db;
+  final Clock _clock;
   final ClientRepository _clientRepo;
   final MeasurementRepository _measurementRepo;
   final ModeleRepository _modeleRepo;
@@ -177,7 +182,7 @@ class AppStore extends ChangeNotifier {
     if (_initialized) return;
 
     if (seedDemo) {
-      await DemoSeeder(_db).seedIfNecessary();
+      await DemoSeeder(_db, clock: _clock).seedIfNecessary();
     }
 
     final dbClients = await _clientRepo.getAll();

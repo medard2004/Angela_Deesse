@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 
 import 'app_database.dart';
+import 'clock.dart';
 
 /// Seeder des données de démonstration pour Clients, Mesures, Modèles et Réalisations.
 /// S'exécute uniquement si :
@@ -9,16 +10,24 @@ import 'app_database.dart';
 /// 2. La clé d'entité ('demo_seeded:clients', 'demo_seeded:modeles', 'demo_seeded:realisations') est absente
 /// N'écrit AUCUNE ligne dans sync_outbox (la démo ne doit pas être synchronisée).
 class DemoSeeder {
-  const DemoSeeder(this.db);
+  const DemoSeeder(this.db, {this.clock = const SystemClock()});
 
   final AppDatabase db;
+  final Clock clock;
 
   Future<bool> seedIfNecessary({bool? isDebug}) async {
     final debug = isDebug ?? kDebugMode;
     if (!debug) return false;
 
-    final now = DateTime.now().toUtc();
+    final now = clock.now().toUtc();
     DateTime day(int offset) => now.add(Duration(days: offset));
+
+    DateTime monthDate(int monthsAgo, int dayInMonth, {int hour = 10, int minute = 0}) {
+      final targetYear = now.month - monthsAgo <= 0 ? now.year - 1 : now.year;
+      final targetMonth = ((now.month - 1 - monthsAgo) % 12 + 12) % 12 + 1;
+      final safeDay = dayInMonth.clamp(1, 28);
+      return DateTime.utc(targetYear, targetMonth, safeDay, hour, minute);
+    }
 
     bool didSeed = false;
 
@@ -224,9 +233,46 @@ class DemoSeeder {
             (4, 'Jupe wax', 'Wax Hollandais', 18000, 20, 'attente', 18000, null, null),
             (8, 'Robe longue', 'Satin bordeaux', 52000, 25, 'attente', 20000, null, 0),
             (2, 'Robe wax', 'Wax rouge', 30000, -10, 'livree', 30000, null, null),
-            (1, 'Chemise', 'Bazin blanc', 25000, -15, 'livree', 25000, null, 2),
-            (5, 'Costume', 'Lin beige', 110000, -20, 'livree', 110000, null, 3),
+            (1, 'Chemise', 'Bazin blanc', 25000, -20, 'livree', 25000, null, 2),
+            (5, 'Costume', 'Lin beige', 110000, -40, 'livree', 110000, null, 3),
           ];
+
+          // Versements clients répartis sur les 6 derniers mois civils :
+          // Month 0 (courant) : o0 (20k), o2_part2 (20k), o4 (15k), o5 (25k), o6 (10k), o10 (18k), o11 (20k) => 128k
+          // Month -1 : o1 (30k), o2_part1 (30k), o3_part2 (30k), o8 (30k), o12 (30k) => 150k
+          // Month -2 : o3_part1 (40k), o7_part2 (30k), o13 (25k) => 95k
+          // Month -3 : o7_part1 (40k) => 40k
+          // Month -4 : o14_part2 (45k) => 45k
+          // Month -5 : o14_part1 (65k) => 65k
+          final paymentPlan = <int, List<(int, DateTime, String)>>{
+            0: [(20000, monthDate(0, 2), 'Acompte')],
+            1: [(30000, monthDate(1, 15), 'Acompte')],
+            2: [
+              (30000, monthDate(1, 8), 'Acompte'),
+              (20000, monthDate(0, 4), 'Complément'),
+            ],
+            3: [
+              (40000, monthDate(2, 10), 'Acompte'),
+              (30000, monthDate(1, 22), 'Complément'),
+            ],
+            4: [(15000, monthDate(0, 3), 'Acompte')],
+            5: [(25000, monthDate(0, 6), 'Acompte')],
+            6: [(10000, monthDate(0, 7), 'Acompte')],
+            7: [
+              (40000, monthDate(3, 14), 'Acompte'),
+              (30000, monthDate(2, 20), 'Complément'),
+            ],
+            8: [(30000, monthDate(1, 18), 'Acompte')],
+            9: [],
+            10: [(18000, monthDate(0, 8), 'Solde')],
+            11: [(20000, monthDate(0, 10), 'Acompte')],
+            12: [(30000, monthDate(1, 5), 'Solde')],
+            13: [(25000, monthDate(2, 5), 'Solde')],
+            14: [
+              (65000, monthDate(5, 8), 'Acompte'),
+              (45000, monthDate(4, 18), 'Solde'),
+            ],
+          };
 
           var receiptNo = 1;
 
@@ -236,7 +282,14 @@ class DemoSeeder {
             final photoPath = 'demo:${i + 1}';
             final deliveryDate = day(d.$5);
             final fittingDate = d.$8;
-            final createdAt = day(d.$5 - 14);
+
+            final plan = paymentPlan[i] ?? const [];
+            final DateTime createdAt;
+            if (plan.isNotEmpty) {
+              createdAt = plan.first.$2.subtract(const Duration(days: 3));
+            } else {
+              createdAt = deliveryDate.subtract(const Duration(days: 14));
+            }
 
             final targetClientId = 'c${d.$1}';
             final effectiveClientId = clientIds.contains(targetClientId) ? targetClientId : clientIds.first;
@@ -286,51 +339,29 @@ class DemoSeeder {
                 );
 
             // 5.3 Insertion des versements démo
-            final paid = d.$7;
             final price = d.$4;
-            if (paid >= 50000) {
-              final first = (paid * .6 / 5000).round() * 5000;
+            var runningPaid = 0;
+            for (var pIdx = 0; pIdx < plan.length; pIdx++) {
+              final pItem = plan[pIdx];
+              final amount = pItem.$1;
+              final pDate = pItem.$2;
+              final pNote = pItem.$3;
+              runningPaid += amount;
+              final balanceAfter = price - runningPaid;
+
+              final pSuffix = plan.length > 1 ? (pIdx == 0 ? 'a' : 'b') : 'a';
               await db.into(db.clientPayments).insert(
                     ClientPaymentsCompanion.insert(
-                      id: 'p${i}a',
+                      id: 'p$i$pSuffix',
                       orderId: orderId,
-                      amount: first,
-                      paidAt: day(-(6 + i)),
+                      amount: amount,
+                      paidAt: pDate,
                       receiptNumber: receiptNo++,
                       orderPriceAtPayment: price,
-                      balanceAfter: price - first,
-                      note: const Value('Acompte'),
-                      createdAt: day(-(6 + i)),
-                      updatedAt: day(-(6 + i)),
-                    ),
-                  );
-              await db.into(db.clientPayments).insert(
-                    ClientPaymentsCompanion.insert(
-                      id: 'p${i}b',
-                      orderId: orderId,
-                      amount: paid - first,
-                      paidAt: day(-(i % 4)),
-                      receiptNumber: receiptNo++,
-                      orderPriceAtPayment: price,
-                      balanceAfter: price - paid,
-                      note: const Value('Complément'),
-                      createdAt: day(-(i % 4)),
-                      updatedAt: day(-(i % 4)),
-                    ),
-                  );
-            } else if (paid > 0) {
-              await db.into(db.clientPayments).insert(
-                    ClientPaymentsCompanion.insert(
-                      id: 'p${i}a',
-                      orderId: orderId,
-                      amount: paid,
-                      paidAt: day(-(i % 9)),
-                      receiptNumber: receiptNo++,
-                      orderPriceAtPayment: price,
-                      balanceAfter: price - paid,
-                      note: const Value('Acompte'),
-                      createdAt: day(-(i % 9)),
-                      updatedAt: day(-(i % 9)),
+                      balanceAfter: balanceAfter,
+                      note: Value(pNote),
+                      createdAt: pDate,
+                      updatedAt: pDate,
                     ),
                   );
             }
@@ -372,9 +403,9 @@ class DemoSeeder {
         if (apprenticesCount == 0) {
           // 6.1 Insertion des 3 apprentis démo
           final apprenticeDefs = [
-            ('a0', 'Kafui Amedome', '90 22 41 18', day(-120), 150000, day(4)),
-            ('a1', 'Mawuli Sodji', '91 08 77 30', day(-200), 120000, day(-2)),
-            ('a2', 'Essi Gbadoe', '93 61 09 52', day(-300), 150000, null),
+            ('a0', 'Kafui Amedome', '90 22 41 18', monthDate(4, 5), 150000, day(4)),
+            ('a1', 'Mawuli Sodji', '91 08 77 30', monthDate(5, 10), 120000, day(-2)),
+            ('a2', 'Essi Gbadoe', '93 61 09 52', monthDate(5, 15), 150000, null),
           ];
 
           for (final def in apprenticeDefs) {
@@ -395,11 +426,11 @@ class DemoSeeder {
 
           // 6.2 Insertion des 5 versements d'écolage
           final paymentDefs = [
-            ('ap0', 'a0', 50000, day(-60), 1, 150000, 100000, ''),
-            ('ap1', 'a0', 30000, day(-5), 2, 150000, 70000, 'Mensualité'),
-            ('ap2', 'a1', 60000, day(-40), 3, 120000, 60000, ''),
-            ('ap3', 'a2', 100000, day(-200), 4, 150000, 50000, ''),
-            ('ap4', 'a2', 50000, day(-40), 5, 150000, 0, ''),
+            ('ap0', 'a0', 50000, monthDate(4, 10), 1, 150000, 100000, 'Acompte inscription'),
+            ('ap1', 'a0', 30000, monthDate(0, 5), 2, 150000, 70000, 'Mensualité'),
+            ('ap2', 'a1', 60000, monthDate(3, 12), 3, 120000, 60000, 'Acompte'),
+            ('ap3', 'a2', 100000, monthDate(5, 20), 4, 150000, 50000, 'Acompte inscription'),
+            ('ap4', 'a2', 50000, monthDate(2, 15), 5, 150000, 0, 'Solde formation'),
           ];
 
           for (final p in paymentDefs) {

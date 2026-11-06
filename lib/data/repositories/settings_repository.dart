@@ -61,6 +61,7 @@ class DriftSettingsRepository implements SettingsRepository {
       entity: 'settings',
       entityId: key,
       op: 'upsert',
+      timestamp: now,
       action: () async {
         await db.into(db.settings).insertOnConflictUpdate(
               db_layer.SettingsCompanion(

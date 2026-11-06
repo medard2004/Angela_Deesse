@@ -64,11 +64,12 @@ class AppDatabase extends _$AppDatabase {
     required String entityId,
     required String op, // 'upsert' ou 'delete'
     required Future<T> Function() action,
+    DateTime? timestamp,
   }) {
     return transaction(() async {
       final result = await action();
       final outboxId = idGenerator.generate();
-      final now = DateTime.now().toUtc();
+      final now = timestamp ?? DateTime.now().toUtc();
       await into(syncOutbox).insert(
         SyncOutboxCompanion.insert(
           id: outboxId,

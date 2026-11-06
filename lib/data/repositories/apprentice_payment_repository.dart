@@ -212,6 +212,7 @@ class DriftApprenticePaymentRepository implements ApprenticePaymentRepository {
       entity: 'apprentice_payments',
       entityId: id,
       op: 'upsert',
+      timestamp: now,
       action: () async {
         await (db.update(db.apprenticePayments)..where((t) => t.id.equals(id))).write(
           db_layer.ApprenticePaymentsCompanion(
