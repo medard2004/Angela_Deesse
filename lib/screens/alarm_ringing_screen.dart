@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../data/services/alarm_sound_service.dart';
 import '../data/services/system_reminder_service.dart';
 import '../ui.dart';
 
@@ -70,6 +71,9 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> with SingleTick
     // Vibration continue
     _startVibrationLoop();
 
+    // Démarrage de la mélodie douce en boucle sur le flux STREAM_ALARM
+    AlarmSoundService.startAlarm();
+
     // Minuterie d'extinction automatique (1 minute / 60s)
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds <= 1) {
@@ -94,6 +98,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> with SingleTick
   @override
   void dispose() {
     AlarmRingingScreen.isAlarmShowing = false;
+    AlarmSoundService.stopAlarm();
     _clockTimer?.cancel();
     _countdownTimer?.cancel();
     _vibrationTimer?.cancel();
@@ -103,6 +108,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> with SingleTick
 
   Future<void> _handleStop({bool timeout = false}) async {
     _vibrationTimer?.cancel();
+    await AlarmSoundService.stopAlarm();
     if (widget.notificationId != null) {
       final reminderService = context.read<SystemReminderService?>();
       if (reminderService != null) {
@@ -121,6 +127,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> with SingleTick
 
   Future<void> _handleSnooze() async {
     _vibrationTimer?.cancel();
+    await AlarmSoundService.stopAlarm();
     final reminderService = context.read<SystemReminderService?>();
     if (widget.notificationId != null && reminderService != null) {
       await reminderService.plugin.cancel(id: widget.notificationId!);

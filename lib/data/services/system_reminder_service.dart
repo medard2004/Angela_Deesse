@@ -78,7 +78,7 @@ class SystemReminderService {
   final FlutterLocalNotificationsPlugin plugin;
   final AlertEngine alertEngine;
 
-  static const String kAlarmChannelId = 'alarmes_douces_v2';
+  static const String kAlarmChannelId = 'alarmes_douces_v3';
   static const String kAlarmChannelName = 'Alarmes d\'atelier (Mélodie douce)';
   static const String kAlarmChannelDesc =
       'Sonnerie douce et plein écran pour les essayages et livraisons';
@@ -456,8 +456,8 @@ class SystemReminderService {
       payload: payload,
     );
 
-    // Minuteur au premier plan : uniquement pour les tests de démonstration courts (<= 30s)
-    if (delay <= const Duration(seconds: 30)) {
+    // Minuteur au premier plan : pour les tests courts (<= 2 min) quand l'app est active
+    if (delay <= const Duration(minutes: 2)) {
       final timer = Timer(delay, () {
         _triggerInAppForegroundAlert(
           id: testId,
