@@ -14,6 +14,7 @@ import 'tables/client_payments_table.dart';
 import 'tables/clients_table.dart';
 import 'tables/measurements_table.dart';
 import 'tables/modeles_table.dart';
+import 'tables/notification_logs_table.dart';
 import 'tables/order_photos_table.dart';
 import 'tables/orders_table.dart';
 import 'tables/realisations_table.dart';
@@ -38,6 +39,7 @@ part 'app_database.g.dart';
   ReceiptCounters,
   SyncOutbox,
   SyncState,
+  NotificationLogs,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e, IdGenerator? idGenerator])
@@ -47,13 +49,18 @@ class AppDatabase extends _$AppDatabase {
   final IdGenerator idGenerator;
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         beforeOpen: (details) async {
           // Activation explicite des clés étrangères dans SQLite
           await customStatement('PRAGMA foreign_keys = ON;');
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(notificationLogs);
+          }
         },
       );
 

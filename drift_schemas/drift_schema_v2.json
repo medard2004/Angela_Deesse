@@ -1,0 +1,3355 @@
+{
+  "_meta": {
+    "description": "This file contains a serialized version of schema entities for drift.",
+    "version": "1.3.0"
+  },
+  "options": {
+    "store_date_time_values_as_text": false
+  },
+  "entities": [
+    {
+      "id": 0,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "clients",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "name",
+            "getter_name": "name",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "phone",
+            "getter_name": "phone",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "notes",
+            "getter_name": "notes",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "measurements",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "client_id",
+            "getter_name": "clientId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES clients (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES clients (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "clients",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "taken_at",
+            "getter_name": "takenAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "measures",
+            "getter_name": "measures",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const MeasurementValuesConverter()",
+              "dart_type_name": "Map<String, double>"
+            }
+          },
+          {
+            "name": "note",
+            "getter_name": "note",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "modeles",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "name",
+            "getter_name": "name",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "description",
+            "getter_name": "description",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_path",
+            "getter_name": "photoPath",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_hash",
+            "getter_name": "photoHash",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_upload_state",
+            "getter_name": "photoUploadState",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'none\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed'))"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "references": [
+        0,
+        2
+      ],
+      "type": "table",
+      "data": {
+        "name": "orders",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "client_id",
+            "getter_name": "clientId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES clients (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES clients (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "clients",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "modele_id",
+            "getter_name": "modeleId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES modeles (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES modeles (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "modeles",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "title",
+            "getter_name": "title",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "fabric",
+            "getter_name": "fabric",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "price",
+            "getter_name": "price",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "delivery_date",
+            "getter_name": "deliveryDate",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "fitting_date",
+            "getter_name": "fittingDate",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "status",
+            "getter_name": "status",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'attente\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "delivered_at",
+            "getter_name": "deliveredAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "photo_path",
+            "getter_name": "photoPath",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_hash",
+            "getter_name": "photoHash",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_upload_state",
+            "getter_name": "photoUploadState",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'none\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (price >= 0)",
+          "CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed'))"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "references": [
+        3
+      ],
+      "type": "table",
+      "data": {
+        "name": "order_photos",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "order_id",
+            "getter_name": "orderId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES orders (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES orders (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "orders",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "photo_path",
+            "getter_name": "photoPath",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_hash",
+            "getter_name": "photoHash",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_upload_state",
+            "getter_name": "photoUploadState",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'none\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "position",
+            "getter_name": "position",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed'))"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "references": [
+        3
+      ],
+      "type": "table",
+      "data": {
+        "name": "client_payments",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "order_id",
+            "getter_name": "orderId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES orders (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES orders (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "orders",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "amount",
+            "getter_name": "amount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "paid_at",
+            "getter_name": "paidAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "note",
+            "getter_name": "note",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "receipt_number",
+            "getter_name": "receiptNumber",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "order_price_at_payment",
+            "getter_name": "orderPriceAtPayment",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "balance_after",
+            "getter_name": "balanceAfter",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "voided_at",
+            "getter_name": "voidedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "void_reason",
+            "getter_name": "voidReason",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (amount > 0)",
+          "CHECK (balance_after >= 0)"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "apprentices",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "name",
+            "getter_name": "name",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "phone",
+            "getter_name": "phone",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "start_date",
+            "getter_name": "startDate",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "total_fee",
+            "getter_name": "totalFee",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "next_due",
+            "getter_name": "nextDue",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "notes",
+            "getter_name": "notes",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (total_fee >= 0)"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "references": [
+        6
+      ],
+      "type": "table",
+      "data": {
+        "name": "apprentice_payments",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "apprentice_id",
+            "getter_name": "apprenticeId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES apprentices (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES apprentices (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "apprentices",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "amount",
+            "getter_name": "amount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "paid_at",
+            "getter_name": "paidAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "note",
+            "getter_name": "note",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "receipt_number",
+            "getter_name": "receiptNumber",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "total_fee_at_payment",
+            "getter_name": "totalFeeAtPayment",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "balance_after",
+            "getter_name": "balanceAfter",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "voided_at",
+            "getter_name": "voidedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "void_reason",
+            "getter_name": "voidReason",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (amount > 0)",
+          "CHECK (balance_after >= 0)"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "realisations",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "category",
+            "getter_name": "category",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'Autre\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "client_id",
+            "getter_name": "clientId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES clients (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES clients (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "clients",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "caption",
+            "getter_name": "caption",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_path",
+            "getter_name": "photoPath",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_hash",
+            "getter_name": "photoHash",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "photo_upload_state",
+            "getter_name": "photoUploadState",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'none\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed'))"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "settings",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "key",
+            "getter_name": "key",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "value",
+            "getter_name": "value",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "receipt_counters",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "counter_name",
+            "getter_name": "counterName",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "last_value",
+            "getter_name": "lastValue",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "counter_name"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "sync_outbox",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "entity",
+            "getter_name": "entity",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "entity_id",
+            "getter_name": "entityId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "op",
+            "getter_name": "op",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "attempts",
+            "getter_name": "attempts",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "last_error",
+            "getter_name": "lastError",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (op IN ('upsert', 'delete'))"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "sync_state",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "key",
+            "getter_name": "key",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "value",
+            "getter_name": "value",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "key"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "notification_log",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "channel",
+            "getter_name": "channel",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "category",
+            "getter_name": "category",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "title",
+            "getter_name": "title",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "body",
+            "getter_name": "body",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "item_count",
+            "getter_name": "itemCount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "alert_keys",
+            "getter_name": "alertKeys",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "scheduled_at",
+            "getter_name": "scheduledAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "fired_at",
+            "getter_name": "firedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "ended_at",
+            "getter_name": "endedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "outcome",
+            "getter_name": "outcome",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "snooze_count",
+            "getter_name": "snoozeCount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "seen_at",
+            "getter_name": "seenAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const NullableDateTimeConverter()",
+              "dart_type_name": "DateTime?"
+            }
+          },
+          {
+            "name": "source_event_id",
+            "getter_name": "sourceEventId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const DateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "references": [
+        0
+      ],
+      "type": "index",
+      "data": {
+        "on": 0,
+        "name": "idx_clients_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "references": [
+        0
+      ],
+      "type": "index",
+      "data": {
+        "on": 0,
+        "name": "idx_clients_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "references": [
+        0
+      ],
+      "type": "index",
+      "data": {
+        "on": 0,
+        "name": "idx_clients_name",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "name",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "references": [
+        1
+      ],
+      "type": "index",
+      "data": {
+        "on": 1,
+        "name": "idx_measurements_client_id",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "client_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "references": [
+        1
+      ],
+      "type": "index",
+      "data": {
+        "on": 1,
+        "name": "idx_measurements_taken_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "taken_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "references": [
+        1
+      ],
+      "type": "index",
+      "data": {
+        "on": 1,
+        "name": "idx_measurements_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "references": [
+        1
+      ],
+      "type": "index",
+      "data": {
+        "on": 1,
+        "name": "idx_measurements_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_modeles_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_modeles_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_modeles_name",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "name",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_orders_client_id",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "client_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_orders_modele_id",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "modele_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_orders_delivery_date",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "delivery_date",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_orders_status",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "status",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_orders_delivered_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "delivered_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_orders_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_orders_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "references": [
+        4
+      ],
+      "type": "index",
+      "data": {
+        "on": 4,
+        "name": "idx_order_photos_order_id",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "order_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "references": [
+        4
+      ],
+      "type": "index",
+      "data": {
+        "on": 4,
+        "name": "idx_order_photos_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "references": [
+        4
+      ],
+      "type": "index",
+      "data": {
+        "on": 4,
+        "name": "idx_order_photos_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "references": [
+        5
+      ],
+      "type": "index",
+      "data": {
+        "on": 5,
+        "name": "idx_client_payments_order_id",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "order_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "references": [
+        5
+      ],
+      "type": "index",
+      "data": {
+        "on": 5,
+        "name": "idx_client_payments_receipt_number",
+        "sql": null,
+        "unique": true,
+        "columns": [
+          {
+            "column": "receipt_number",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "references": [
+        5
+      ],
+      "type": "index",
+      "data": {
+        "on": 5,
+        "name": "idx_client_payments_paid_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "paid_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 37,
+      "references": [
+        5
+      ],
+      "type": "index",
+      "data": {
+        "on": 5,
+        "name": "idx_client_payments_voided_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "voided_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "references": [
+        5
+      ],
+      "type": "index",
+      "data": {
+        "on": 5,
+        "name": "idx_client_payments_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "references": [
+        5
+      ],
+      "type": "index",
+      "data": {
+        "on": 5,
+        "name": "idx_client_payments_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 40,
+      "references": [
+        6
+      ],
+      "type": "index",
+      "data": {
+        "on": 6,
+        "name": "idx_apprentices_name",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "name",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "references": [
+        6
+      ],
+      "type": "index",
+      "data": {
+        "on": 6,
+        "name": "idx_apprentices_next_due",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "next_due",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "references": [
+        6
+      ],
+      "type": "index",
+      "data": {
+        "on": 6,
+        "name": "idx_apprentices_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "references": [
+        6
+      ],
+      "type": "index",
+      "data": {
+        "on": 6,
+        "name": "idx_apprentices_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 44,
+      "references": [
+        7
+      ],
+      "type": "index",
+      "data": {
+        "on": 7,
+        "name": "idx_apprentice_payments_apprentice_id",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "apprentice_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 45,
+      "references": [
+        7
+      ],
+      "type": "index",
+      "data": {
+        "on": 7,
+        "name": "idx_apprentice_payments_receipt_number",
+        "sql": null,
+        "unique": true,
+        "columns": [
+          {
+            "column": "receipt_number",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 46,
+      "references": [
+        7
+      ],
+      "type": "index",
+      "data": {
+        "on": 7,
+        "name": "idx_apprentice_payments_paid_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "paid_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 47,
+      "references": [
+        7
+      ],
+      "type": "index",
+      "data": {
+        "on": 7,
+        "name": "idx_apprentice_payments_voided_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "voided_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 48,
+      "references": [
+        7
+      ],
+      "type": "index",
+      "data": {
+        "on": 7,
+        "name": "idx_apprentice_payments_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 49,
+      "references": [
+        7
+      ],
+      "type": "index",
+      "data": {
+        "on": 7,
+        "name": "idx_apprentice_payments_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 50,
+      "references": [
+        8
+      ],
+      "type": "index",
+      "data": {
+        "on": 8,
+        "name": "idx_realisations_category",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "category",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 51,
+      "references": [
+        8
+      ],
+      "type": "index",
+      "data": {
+        "on": 8,
+        "name": "idx_realisations_client_id",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "client_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 52,
+      "references": [
+        8
+      ],
+      "type": "index",
+      "data": {
+        "on": 8,
+        "name": "idx_realisations_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 53,
+      "references": [
+        8
+      ],
+      "type": "index",
+      "data": {
+        "on": 8,
+        "name": "idx_realisations_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 54,
+      "references": [
+        9
+      ],
+      "type": "index",
+      "data": {
+        "on": 9,
+        "name": "idx_settings_key",
+        "sql": null,
+        "unique": true,
+        "columns": [
+          {
+            "column": "key",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 55,
+      "references": [
+        9
+      ],
+      "type": "index",
+      "data": {
+        "on": 9,
+        "name": "idx_settings_updated_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "updated_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 56,
+      "references": [
+        11
+      ],
+      "type": "index",
+      "data": {
+        "on": 11,
+        "name": "idx_sync_outbox_created_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "created_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 57,
+      "references": [
+        11
+      ],
+      "type": "index",
+      "data": {
+        "on": 11,
+        "name": "idx_sync_outbox_entity_row",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "entity",
+            "order_by": null
+          },
+          {
+            "column": "entity_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 58,
+      "references": [
+        13
+      ],
+      "type": "index",
+      "data": {
+        "on": 13,
+        "name": "idx_notification_log_scheduled_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "scheduled_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 59,
+      "references": [
+        13
+      ],
+      "type": "index",
+      "data": {
+        "on": 13,
+        "name": "idx_notification_log_outcome",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "outcome",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 60,
+      "references": [
+        13
+      ],
+      "type": "index",
+      "data": {
+        "on": 13,
+        "name": "idx_notification_log_seen_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "seen_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 61,
+      "references": [
+        13
+      ],
+      "type": "index",
+      "data": {
+        "on": 13,
+        "name": "idx_notification_log_source_event_id",
+        "sql": null,
+        "unique": true,
+        "columns": [
+          {
+            "column": "source_event_id",
+            "order_by": null
+          }
+        ]
+      }
+    }
+  ],
+  "fixed_sql": [
+    {
+      "name": "clients",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"clients\" (\"id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"phone\" TEXT NOT NULL DEFAULT '', \"notes\" TEXT NOT NULL DEFAULT '', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "measurements",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"measurements\" (\"id\" TEXT NOT NULL, \"client_id\" TEXT NOT NULL REFERENCES clients (id), \"taken_at\" INTEGER NOT NULL, \"measures\" TEXT NOT NULL, \"note\" TEXT NOT NULL DEFAULT '', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "modeles",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"modeles\" (\"id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"description\" TEXT NOT NULL DEFAULT '', \"photo_path\" TEXT NULL, \"photo_hash\" TEXT NULL, \"photo_upload_state\" TEXT NOT NULL DEFAULT 'none', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed')));"
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"orders\" (\"id\" TEXT NOT NULL, \"client_id\" TEXT NOT NULL REFERENCES clients (id), \"modele_id\" TEXT NULL REFERENCES modeles (id), \"title\" TEXT NOT NULL, \"fabric\" TEXT NOT NULL DEFAULT '', \"price\" INTEGER NOT NULL, \"delivery_date\" INTEGER NOT NULL, \"fitting_date\" INTEGER NULL, \"status\" TEXT NOT NULL DEFAULT 'attente', \"delivered_at\" INTEGER NULL, \"photo_path\" TEXT NULL, \"photo_hash\" TEXT NULL, \"photo_upload_state\" TEXT NOT NULL DEFAULT 'none', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (price >= 0), CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed')));"
+        }
+      ]
+    },
+    {
+      "name": "order_photos",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"order_photos\" (\"id\" TEXT NOT NULL, \"order_id\" TEXT NOT NULL REFERENCES orders (id), \"photo_path\" TEXT NOT NULL, \"photo_hash\" TEXT NULL, \"photo_upload_state\" TEXT NOT NULL DEFAULT 'none', \"position\" INTEGER NOT NULL DEFAULT 0, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed')));"
+        }
+      ]
+    },
+    {
+      "name": "client_payments",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"client_payments\" (\"id\" TEXT NOT NULL, \"order_id\" TEXT NOT NULL REFERENCES orders (id), \"amount\" INTEGER NOT NULL, \"paid_at\" INTEGER NOT NULL, \"note\" TEXT NOT NULL DEFAULT '', \"receipt_number\" INTEGER NOT NULL, \"order_price_at_payment\" INTEGER NOT NULL, \"balance_after\" INTEGER NOT NULL, \"voided_at\" INTEGER NULL, \"void_reason\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (amount > 0), CHECK (balance_after >= 0));"
+        }
+      ]
+    },
+    {
+      "name": "apprentices",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"apprentices\" (\"id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"phone\" TEXT NOT NULL DEFAULT '', \"start_date\" INTEGER NOT NULL, \"total_fee\" INTEGER NOT NULL, \"next_due\" INTEGER NULL, \"notes\" TEXT NOT NULL DEFAULT '', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (total_fee >= 0));"
+        }
+      ]
+    },
+    {
+      "name": "apprentice_payments",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"apprentice_payments\" (\"id\" TEXT NOT NULL, \"apprentice_id\" TEXT NOT NULL REFERENCES apprentices (id), \"amount\" INTEGER NOT NULL, \"paid_at\" INTEGER NOT NULL, \"note\" TEXT NOT NULL DEFAULT '', \"receipt_number\" INTEGER NOT NULL, \"total_fee_at_payment\" INTEGER NOT NULL, \"balance_after\" INTEGER NOT NULL, \"voided_at\" INTEGER NULL, \"void_reason\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (amount > 0), CHECK (balance_after >= 0));"
+        }
+      ]
+    },
+    {
+      "name": "realisations",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"realisations\" (\"id\" TEXT NOT NULL, \"category\" TEXT NOT NULL DEFAULT 'Autre', \"client_id\" TEXT NULL REFERENCES clients (id), \"caption\" TEXT NOT NULL DEFAULT '', \"photo_path\" TEXT NOT NULL, \"photo_hash\" TEXT NULL, \"photo_upload_state\" TEXT NOT NULL DEFAULT 'none', \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (photo_upload_state IN ('none', 'pending', 'uploaded', 'failed')));"
+        }
+      ]
+    },
+    {
+      "name": "settings",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"settings\" (\"id\" TEXT NOT NULL, \"key\" TEXT NOT NULL, \"value\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "receipt_counters",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"receipt_counters\" (\"counter_name\" TEXT NOT NULL, \"last_value\" INTEGER NOT NULL DEFAULT 0, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"counter_name\"));"
+        }
+      ]
+    },
+    {
+      "name": "sync_outbox",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"sync_outbox\" (\"id\" TEXT NOT NULL, \"entity\" TEXT NOT NULL, \"entity_id\" TEXT NOT NULL, \"op\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"attempts\" INTEGER NOT NULL DEFAULT 0, \"last_error\" TEXT NULL, PRIMARY KEY (\"id\"), CHECK (op IN ('upsert', 'delete')));"
+        }
+      ]
+    },
+    {
+      "name": "sync_state",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"sync_state\" (\"key\" TEXT NOT NULL, \"value\" TEXT NOT NULL, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"key\"));"
+        }
+      ]
+    },
+    {
+      "name": "notification_log",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"notification_log\" (\"id\" TEXT NOT NULL, \"channel\" TEXT NOT NULL, \"category\" TEXT NOT NULL, \"title\" TEXT NOT NULL, \"body\" TEXT NOT NULL, \"item_count\" INTEGER NOT NULL DEFAULT 1, \"alert_keys\" TEXT NOT NULL, \"scheduled_at\" INTEGER NOT NULL, \"fired_at\" INTEGER NULL, \"ended_at\" INTEGER NULL, \"outcome\" TEXT NOT NULL, \"snooze_count\" INTEGER NOT NULL DEFAULT 0, \"seen_at\" INTEGER NULL, \"source_event_id\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "idx_clients_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_clients_deleted_at ON clients (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_clients_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_clients_updated_at ON clients (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_clients_name",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_clients_name ON clients (name)"
+        }
+      ]
+    },
+    {
+      "name": "idx_measurements_client_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_measurements_client_id ON measurements (client_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_measurements_taken_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_measurements_taken_at ON measurements (taken_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_measurements_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_measurements_deleted_at ON measurements (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_measurements_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_measurements_updated_at ON measurements (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_modeles_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_modeles_deleted_at ON modeles (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_modeles_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_modeles_updated_at ON modeles (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_modeles_name",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_modeles_name ON modeles (name)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_client_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_client_id ON orders (client_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_modele_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_modele_id ON orders (modele_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_delivery_date",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_delivery_date ON orders (delivery_date)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_status",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_status ON orders (status)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_delivered_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_delivered_at ON orders (delivered_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_deleted_at ON orders (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_orders_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_orders_updated_at ON orders (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_order_photos_order_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_order_photos_order_id ON order_photos (order_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_order_photos_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_order_photos_updated_at ON order_photos (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_order_photos_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_order_photos_deleted_at ON order_photos (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_client_payments_order_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_client_payments_order_id ON client_payments (order_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_client_payments_receipt_number",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE UNIQUE INDEX idx_client_payments_receipt_number ON client_payments (receipt_number)"
+        }
+      ]
+    },
+    {
+      "name": "idx_client_payments_paid_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_client_payments_paid_at ON client_payments (paid_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_client_payments_voided_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_client_payments_voided_at ON client_payments (voided_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_client_payments_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_client_payments_deleted_at ON client_payments (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_client_payments_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_client_payments_updated_at ON client_payments (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentices_name",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentices_name ON apprentices (name)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentices_next_due",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentices_next_due ON apprentices (next_due)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentices_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentices_deleted_at ON apprentices (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentices_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentices_updated_at ON apprentices (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentice_payments_apprentice_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentice_payments_apprentice_id ON apprentice_payments (apprentice_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentice_payments_receipt_number",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE UNIQUE INDEX idx_apprentice_payments_receipt_number ON apprentice_payments (receipt_number)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentice_payments_paid_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentice_payments_paid_at ON apprentice_payments (paid_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentice_payments_voided_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentice_payments_voided_at ON apprentice_payments (voided_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentice_payments_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentice_payments_deleted_at ON apprentice_payments (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_apprentice_payments_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_apprentice_payments_updated_at ON apprentice_payments (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_realisations_category",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_realisations_category ON realisations (category)"
+        }
+      ]
+    },
+    {
+      "name": "idx_realisations_client_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_realisations_client_id ON realisations (client_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_realisations_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_realisations_deleted_at ON realisations (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_realisations_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_realisations_updated_at ON realisations (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_settings_key",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE UNIQUE INDEX idx_settings_key ON settings (\"key\")"
+        }
+      ]
+    },
+    {
+      "name": "idx_settings_updated_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_settings_updated_at ON settings (updated_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_sync_outbox_created_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_sync_outbox_created_at ON sync_outbox (created_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_sync_outbox_entity_row",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_sync_outbox_entity_row ON sync_outbox (entity, entity_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_notification_log_scheduled_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_notification_log_scheduled_at ON notification_log (scheduled_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_notification_log_outcome",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_notification_log_outcome ON notification_log (outcome)"
+        }
+      ]
+    },
+    {
+      "name": "idx_notification_log_seen_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_notification_log_seen_at ON notification_log (seen_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_notification_log_source_event_id",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE UNIQUE INDEX idx_notification_log_source_event_id ON notification_log (source_event_id)"
+        }
+      ]
+    }
+  ]
+}

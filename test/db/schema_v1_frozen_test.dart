@@ -27,8 +27,8 @@ void main() {
       await db.close();
     });
 
-    test('1. Version du schéma gelée à schemaVersion = 1', () {
-      expect(db.schemaVersion, equals(1));
+    test('1. Version actuelle du schéma est schemaVersion = 2 (après v1 gelée sous tag schema-v1-frozen)', () {
+      expect(db.schemaVersion, equals(2));
     });
 
     test('2. Toutes les tables du dump v1 sont présentes et conformes', () {
