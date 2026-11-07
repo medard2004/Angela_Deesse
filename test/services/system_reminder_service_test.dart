@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:angela_dress/data/models.dart';
+import 'package:angela_dress/data/repositories/settings_repository.dart';
+import 'package:angela_dress/data/services/notification_center_service.dart';
 import 'package:angela_dress/data/services/system_reminder_service.dart';
 
 /// Faux plugin FlutterLocalNotifications pour tester unitairement la planification.
@@ -63,6 +65,22 @@ class FakeFlutterLocalNotificationsPlugin implements FlutterLocalNotificationsPl
     NotificationDetails? notificationDetails,
     String? payload,
   }) async {}
+
+  NotificationAppLaunchDetails? launchDetailsResult;
+
+  @override
+  Future<NotificationAppLaunchDetails?> getNotificationAppLaunchDetails() async {
+    return launchDetailsResult;
+  }
+
+  @override
+  Future<bool?> initialize({
+    required InitializationSettings settings,
+    DidReceiveNotificationResponseCallback? onDidReceiveNotificationResponse,
+    DidReceiveBackgroundNotificationResponseCallback? onDidReceiveBackgroundNotificationResponse,
+  }) async {
+    return true;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -227,6 +245,66 @@ void main() {
       // Exactement les notifications d'une seule replanification
       expect(fakePlugin.scheduled, isNotEmpty);
       expect(fakePlugin.scheduled.length, equals(2)); // veille 18h et jour J 8h
+    });
+
+    test('Lancement à froid par notification consomme getNotificationAppLaunchDetails et positionne pendingOpenNotifications', () async {
+      NotificationCenterService.pendingOpenNotifications = false;
+      bool onSelectCalled = false;
+
+      fakePlugin.launchDetailsResult = const NotificationAppLaunchDetails(
+        true,
+        notificationResponse: NotificationResponse(
+          notificationResponseType: NotificationResponseType.selectedNotification,
+          id: 42,
+          payload: '{"type":"plan"}',
+        ),
+      );
+
+      await service.init(
+        onSelectNotification: (_) {
+          onSelectCalled = true;
+        },
+      );
+
+      expect(NotificationCenterService.pendingOpenNotifications, isTrue);
+      expect(onSelectCalled, isTrue);
+    });
+
+    test('Alarme planifiée utilise le texte public (sans nom de client, titre ni montant)', () async {
+      final now = DateTime(2026, 11, 6, 8, 0);
+      final client = Client(id: 'c1', name: 'Madame Marguerite');
+      final order = Order(
+        id: 'ord-public-test',
+        clientId: 'c1',
+        title: 'Robe de mariée luxe 500k',
+        price: 500000,
+        deliveryDate: DateTime(2026, 11, 7), // demain
+        createdAt: now,
+      );
+
+      await service.rescheduleAll(
+        orders: [order],
+        apprentices: [],
+        clientById: (_) => client,
+        remainingOfOrder: (_) => 250000,
+        remainingOfApprentice: (_) => 0,
+        deliveryEnabled: true,
+        deliveryMode: ReminderMode.alarm,
+        customNow: now,
+      );
+
+      expect(fakePlugin.scheduled, isNotEmpty);
+      final first = fakePlugin.scheduled.first;
+      // Sur l'alarme : titre public ("Livraison demain") et corps public ("1 commande")
+      expect(first['title'], equals('Livraison demain'));
+      expect(first['body'], equals('1 commande'));
+      expect(first['body'], isNot(contains('Marguerite')));
+      expect(first['body'], isNot(contains('500k')));
+      expect(first['body'], isNot(contains('250000')));
+
+      final payload = jsonDecode(first['payload'] as String) as Map<String, dynamic>;
+      expect(payload['publicTitle'], equals('Livraison demain'));
+      expect(payload['publicBody'], equals('1 commande'));
     });
   });
 }

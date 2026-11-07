@@ -53,6 +53,11 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
           );
         }
       } else {
+        final lockManager = _lockManager;
+        if (lockManager != null && lockManager.isLocked) {
+          // Écran de PIN affiché = traité comme arrière-plan, aucun bandeau in-app
+          return;
+        }
         final overlay = _navigatorKey.currentState?.overlay;
         final ctx = _navigatorKey.currentContext;
         if (ctx != null) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/app_brand.dart';
 import '../core/theme.dart';
 import '../data/services/photo_storage.dart';
 import '../data/services/pin_security_service.dart';
@@ -225,7 +226,7 @@ class _SplashScreenState extends State<SplashScreen>
     final centerX = screenWidth / 2;
 
     // Position finale calculée dynamiquement selon la barre supérieure et la largeur de l'écran
-    final targetOffset = computeAppBarLogoCenter(context, label: 'Angela Déesse');
+    final targetOffset = computeAppBarLogoCenter(context, label: AppBrand.appName);
     final targetX = targetOffset.dx;
     final targetY = targetOffset.dy;
 

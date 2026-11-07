@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import '../data/services/app_lock_manager.dart';
 import '../ui.dart';
 
 /// Bannière de notification élégante qui s'affiche en haut de l'écran
@@ -29,6 +30,11 @@ class InAppNotificationBanner extends StatefulWidget {
     Duration duration = const Duration(seconds: 5),
     OverlayState? overlayState,
   }) {
+    try {
+      final lockManager = Provider.of<AppLockManager?>(context, listen: false);
+      if (lockManager != null && lockManager.isLocked) return;
+    } catch (_) {}
+
     _currentEntry?.remove();
     _currentEntry = null;
 

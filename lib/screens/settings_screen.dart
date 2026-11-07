@@ -286,7 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _reminderRow(
                 icon: Icons.local_shipping_outlined,
                 title: 'Livraisons',
-                sub: 'Deux jours avant et le jour même',
+                sub: 'La veille à 18h et le jour J à 8h',
                 mode: s.deliveryMode,
                 onTap: () => _chooseReminderMode(
                   context: context,
@@ -299,7 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _reminderRow(
                 icon: Icons.schedule_rounded,
                 title: 'Essayages',
-                sub: 'La veille et le matin',
+                sub: 'La veille à 18h et le jour J',
                 mode: s.fittingMode,
                 onTap: () => _chooseReminderMode(
                   context: context,
@@ -310,14 +310,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               _reminderRow(
+                icon: Icons.school_outlined,
+                title: 'Échéances d\'apprentis',
+                sub: 'Le jour J à 8h',
+                mode: s.apprenticeMode,
+                onTap: () => _chooseReminderMode(
+                  context: context,
+                  s: s,
+                  title: 'Échéances d\'apprentis',
+                  currentMode: s.apprenticeMode,
+                  onSelect: s.setApprenticeMode,
+                ),
+              ),
+              _reminderRow(
                 icon: Icons.account_balance_wallet_outlined,
-                title: 'Paiements',
-                sub: 'Clients et apprentis en attente',
+                title: 'Soldes en attente',
+                sub: 'Commandes prêtes avec solde dû (in-app)',
                 mode: s.paymentsMode,
                 onTap: () => _chooseReminderMode(
                   context: context,
                   s: s,
-                  title: 'Paiements',
+                  title: 'Soldes en attente',
                   currentMode: s.paymentsMode,
                   onSelect: s.setPaymentsMode,
                 ),
@@ -325,7 +338,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _reminderRow(
                 icon: Icons.warning_amber_rounded,
                 title: 'Commandes en retard',
-                sub: 'Alerte chaque matin',
+                sub: 'Commandes dépassées non livrées (in-app)',
                 mode: s.lateMode,
                 onTap: () => _chooseReminderMode(
                   context: context,

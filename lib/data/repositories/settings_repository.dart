@@ -9,6 +9,7 @@ const String kSettingNotifDelivery = 'notif_delivery';
 const String kSettingNotifFitting = 'notif_fitting';
 const String kSettingNotifPayments = 'notif_payments';
 const String kSettingNotifLate = 'notif_late';
+const String kSettingNotifApprentice = 'notif_apprentice';
 const String kSettingReminderGuideDismissed = 'reminder_guide_dismissed';
 
 /// Modes de rappel configurables par l'artisan pour chaque type d'événement.
@@ -38,11 +39,28 @@ const bool kDefaultNotifDelivery = true;
 const bool kDefaultNotifFitting = true;
 const bool kDefaultNotifPayments = true;
 const bool kDefaultNotifLate = true;
+const bool kDefaultNotifApprentice = true;
 
 const ReminderMode kDefaultModeDelivery = ReminderMode.alarm;
 const ReminderMode kDefaultModeFitting = ReminderMode.alarm;
 const ReminderMode kDefaultModePayments = ReminderMode.notification;
 const ReminderMode kDefaultModeLate = ReminderMode.notification;
+const ReminderMode kDefaultModeApprentice = ReminderMode.alarm;
+
+/// Table de correspondance famille / étape -> clé de réglage :
+/// - Famille livraison (AlertFamily.delivery) :
+///     - étape tomorrow (veille 18:00) : kSettingNotifDelivery ('notif_delivery', défaut alarm)
+///     - étape today (jour J 08:00) : kSettingNotifDelivery ('notif_delivery', défaut alarm)
+///     - étape overdue (retard) : kSettingNotifLate ('notif_late', in-app seulement, pas de rappel planifié futur)
+///     - étape upcoming (dans 2 jours) : in-app seulement (accueil / notifications), pas de rappel planifié
+/// - Famille essayage (AlertFamily.fitting) :
+///     - étape tomorrow (veille 18:00) : kSettingNotifFitting ('notif_fitting', défaut alarm)
+///     - étape today (jour J 1h avant ou 08:00) : kSettingNotifFitting ('notif_fitting', défaut alarm)
+/// - Famille échéance d'apprenti (AlertFamily.apprenticeDue) :
+///     - étape today (jour J 08:00) : kSettingNotifApprentice ('notif_apprentice', défaut alarm)
+///     - étape tomorrow / upcoming (2-7 j) / overdue : in-app seulement, pas de rappel planifié
+/// - Famille solde dû (AlertFamily.pendingBalance) :
+///     - étape ready : kSettingNotifPayments ('notif_payments', défaut notification, in-app seulement, pas de rappel planifié)
 
 abstract class SettingsRepository {
   Stream<Map<String, String>> watchAll();

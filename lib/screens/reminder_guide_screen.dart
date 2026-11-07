@@ -3,6 +3,7 @@ import 'package:app_settings/app_settings.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import '../core/app_brand.dart';
 import '../data/services/alert_engine.dart';
 import '../data/services/system_reminder_service.dart';
 import '../ui.dart';
@@ -402,7 +403,7 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Pour que votre téléphone sonne même lorsqu\'il est posé en veille prolongée sur votre établi, désactivez l\'optimisation de batterie pour Angela Déesse.',
+                        'Pour que votre téléphone sonne même lorsqu\'il est posé en veille prolongée sur votre établi, désactivez l\'optimisation de batterie pour ${AppBrand.appName}.',
                         style: TextStyle(color: Pal.slate, fontSize: 12, height: 1.35),
                       ),
                       const SizedBox(height: 10),
@@ -449,8 +450,8 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
                         const Text(
                           'Les téléphones Tecno, Infinix et Itel coupent souvent les applications en veille. Pour que vos rappels fonctionnent à coup sûr :\n\n'
                           '1. Ouvrez l\'application « Phone Master » ou « Gestionnaire ».\n'
-                          '2. Allez dans « Démarrage automatique » et activez Angela Déesse.\n'
-                          '3. Dans la liste des applications récentes, glissez Angela Déesse vers le bas et appuyez sur l\'icône Cadenas pour la verrouiller.',
+                          '2. Allez dans « Démarrage automatique » et activez ${AppBrand.appName}.\n'
+                          '3. Dans la liste des applications récentes, glissez ${AppBrand.appName} vers le bas et appuyez sur l\'icône Cadenas pour la verrouiller.',
                           style: TextStyle(fontSize: 12.5, height: 1.4, color: Pal.ink),
                         ),
                       ],
@@ -483,7 +484,7 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          '1. Ouvrez les Paramètres > Applications > Gérer les applications > Angela Déesse.\n'
+                          '1. Ouvrez les Paramètres > Applications > Gérer les applications > ${AppBrand.appName}.\n'
                           '2. Activez le Démarrage automatique.\n'
                           '3. Dans Économiseur de batterie, choisissez « Pas de restrictions ».',
                           style: TextStyle(fontSize: 12.5, height: 1.4, color: Pal.ink),
@@ -517,11 +518,11 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           '1. Ouvrez les Paramètres > Batterie et maintenance > Batterie.\n'
                           '2. Allez dans « Limites d\'utilisation en arrière-plan ».\n'
-                          '3. Ajoutez Angela Déesse dans « Applications jamais en veille ».',
-                          style: TextStyle(fontSize: 12.5, height: 1.4, color: Pal.ink),
+                          '3. Ajoutez ${AppBrand.appName} dans « Applications jamais en veille ».',
+                          style: const TextStyle(fontSize: 12.5, height: 1.4, color: Pal.ink),
                         ),
                       ],
                     ),
@@ -532,9 +533,9 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
                   const SizedBox(height: 8),
                   Panel(
                     padding: const EdgeInsets.all(14),
-                    child: const Text(
-                      'Si votre téléphone dispose d\'un gestionnaire d\'alimentation ou de démarrage automatique (ex: Honor, Huawei, Oppo, Vivo), veillez à autoriser Angela Déesse à s\'exécuter en arrière-plan.',
-                      style: TextStyle(color: Pal.slate, fontSize: 12, height: 1.35),
+                    child: Text(
+                      'Si votre téléphone dispose d\'un gestionnaire d\'alimentation ou de démarrage automatique (ex: Honor, Huawei, Oppo, Vivo), veillez à autoriser ${AppBrand.appName} à s\'exécuter en arrière-plan.',
+                      style: const TextStyle(color: Pal.slate, fontSize: 12, height: 1.35),
                     ),
                   ),
                   const SizedBox(height: 18),

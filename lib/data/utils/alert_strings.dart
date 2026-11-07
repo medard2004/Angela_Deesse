@@ -36,5 +36,28 @@ class AlertStrings {
     final name = apprenticeName.trim().isEmpty ? 'Apprenti(e)' : apprenticeName.trim();
     return '$name · Formation';
   }
+
+  // --- Variantes publiques (sans nom, sans titre, sans montant) ---
+  static String publicBodyForOrders(int count) =>
+      count > 1 ? '$count commandes' : '1 commande';
+
+  static String publicBodyForApprentices(int count) =>
+      count > 1 ? '$count apprentis' : '1 apprenti';
+
+  static String publicBodyForMixed(int count) =>
+      count > 1 ? '$count rappels' : '1 rappel';
+
+  static String publicBodyForCount({
+    required int orderCount,
+    required int apprenticeCount,
+  }) {
+    if (orderCount > 0 && apprenticeCount == 0) {
+      return publicBodyForOrders(orderCount);
+    }
+    if (apprenticeCount > 0 && orderCount == 0) {
+      return publicBodyForApprentices(apprenticeCount);
+    }
+    return publicBodyForMixed(orderCount + apprenticeCount);
+  }
 }
 

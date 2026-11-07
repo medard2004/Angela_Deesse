@@ -151,6 +151,19 @@ class SystemReminderService {
           color: Color(0xFF1747B8),
           visibility: NotificationVisibility.private,
           autoCancel: true,
+          actions: <AndroidNotificationAction>[
+            AndroidNotificationAction(
+              kActionDone,
+              'Fait',
+              showsUserInterface: false,
+              cancelNotification: true,
+            ),
+            AndroidNotificationAction(
+              kActionSnooze,
+              'Reporter 10 min',
+              showsUserInterface: false,
+            ),
+          ],
         ),
       );
 
@@ -230,6 +243,16 @@ class SystemReminderService {
         }
       } catch (_) {}
     }
+
+    try {
+      final launchDetails = await plugin.getNotificationAppLaunchDetails();
+      if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+        NotificationCenterService.pendingOpenNotifications = true;
+        if (launchDetails.notificationResponse != null) {
+          onSelectNotification?.call(launchDetails.notificationResponse!);
+        }
+      }
+    } catch (_) {}
   }
 
   /// Vérifie si l'application dispose de l'autorisation de poster des notifications.
@@ -267,9 +290,11 @@ class SystemReminderService {
     bool deliveryEnabled = true,
     bool fittingEnabled = true,
     bool paymentsEnabled = true,
+    bool apprenticeEnabled = true,
     ReminderMode? deliveryMode,
     ReminderMode? fittingMode,
     ReminderMode? paymentsMode,
+    ReminderMode? apprenticeMode,
     DateTime? customNow,
     Duration debounceDuration = const Duration(milliseconds: 500),
   }) {
@@ -284,9 +309,11 @@ class SystemReminderService {
         deliveryEnabled: deliveryEnabled,
         fittingEnabled: fittingEnabled,
         paymentsEnabled: paymentsEnabled,
+        apprenticeEnabled: apprenticeEnabled,
         deliveryMode: deliveryMode,
         fittingMode: fittingMode,
         paymentsMode: paymentsMode,
+        apprenticeMode: apprenticeMode,
         customNow: customNow,
       );
     });
@@ -302,9 +329,11 @@ class SystemReminderService {
     bool deliveryEnabled = true,
     bool fittingEnabled = true,
     bool paymentsEnabled = true,
+    bool apprenticeEnabled = true,
     ReminderMode? deliveryMode,
     ReminderMode? fittingMode,
     ReminderMode? paymentsMode,
+    ReminderMode? apprenticeMode,
     DateTime? customNow,
   }) async {
     final now = customNow ?? DateTime.now();
@@ -334,9 +363,11 @@ class SystemReminderService {
       deliveryEnabled: deliveryEnabled,
       fittingEnabled: fittingEnabled,
       paymentsEnabled: paymentsEnabled,
+      apprenticeEnabled: apprenticeEnabled,
       deliveryMode: deliveryMode,
       fittingMode: fittingMode,
       paymentsMode: paymentsMode,
+      apprenticeMode: apprenticeMode,
       maxWindowDays: 45,
       maxReminders: 120,
     );
@@ -353,10 +384,15 @@ class SystemReminderService {
 
     for (final g in grouped) {
       final tzTime = tz.TZDateTime.from(g.scheduledAt, tz.local);
+      final title = g.isAlarm ? g.effectivePublicTitle : g.title;
+      final body = g.isAlarm ? g.effectivePublicBody : g.body;
+
       final payload = jsonEncode({
         'type': kPayloadTypePlan,
         'title': g.title,
         'body': g.body,
+        'publicTitle': g.effectivePublicTitle,
+        'publicBody': g.effectivePublicBody,
         'id': g.id,
         'keys': g.alertKeys,
         'isAlarm': g.isAlarm,
@@ -366,8 +402,8 @@ class SystemReminderService {
 
       await plugin.zonedSchedule(
         id: g.id,
-        title: g.title,
-        body: g.body,
+        title: title,
+        body: body,
         scheduledDate: tzTime,
         notificationDetails: details,
         androidScheduleMode: scheduleMode,

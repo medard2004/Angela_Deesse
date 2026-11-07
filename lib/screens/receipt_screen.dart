@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:printing/printing.dart';
+import '../core/app_brand.dart';
 import '../ui.dart';
 import '../data/services/contact_launcher.dart';
 import '../data/services/external_action_tracker.dart';
@@ -733,7 +734,7 @@ class _BarcodeArt extends StatelessWidget {
 
 /// C) Tampon circulaire (~30% de la largeur du papier), incliné à -12° (-0.21 rad)
 class _StampBadge extends StatelessWidget {
-  const _StampBadge({required this.text, this.atelierName = 'Angela Déesse'});
+  const _StampBadge({required this.text, this.atelierName = AppBrand.defaultAtelierName});
   final String text;
   final String atelierName;
 

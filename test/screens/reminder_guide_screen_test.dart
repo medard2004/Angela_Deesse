@@ -181,6 +181,7 @@ void main() {
     await tester.tap(find.text('Compris'));
     await tester.pumpAndSettle();
     expect(find.text('Test programmé'), findsNothing);
+    reminderService.dispose();
   });
 
   testWidgets('SettingsScreen affiche l\'accès au guide des rappels et l\'ouvre au clic', (tester) async {

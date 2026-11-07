@@ -140,11 +140,13 @@ class AppStore extends ChangeNotifier {
   ReminderMode get fittingMode => ReminderMode.parse(_settingsMap[kSettingNotifFitting], fallback: kDefaultModeFitting);
   ReminderMode get paymentsMode => ReminderMode.parse(_settingsMap[kSettingNotifPayments], fallback: kDefaultModePayments);
   ReminderMode get lateMode => ReminderMode.parse(_settingsMap[kSettingNotifLate], fallback: kDefaultModeLate);
+  ReminderMode get apprenticeMode => ReminderMode.parse(_settingsMap[kSettingNotifApprentice], fallback: kDefaultModeApprentice);
 
   bool get notifDelivery => deliveryMode != ReminderMode.none;
   bool get notifFitting => fittingMode != ReminderMode.none;
   bool get notifPayments => paymentsMode != ReminderMode.none;
   bool get notifLate => lateMode != ReminderMode.none;
+  bool get notifApprentice => apprenticeMode != ReminderMode.none;
   bool get reminderGuideDismissed => _settingsMap[kSettingReminderGuideDismissed] == 'true';
 
   int get monthTotal => _financeSummary?.monthTotal ?? 0;
@@ -200,10 +202,19 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setApprenticeMode(ReminderMode m) async {
+    final str = m.toSettingString();
+    await _settingsRepo.set(kSettingNotifApprentice, str);
+    _settingsMap[kSettingNotifApprentice] = str;
+    _triggerReminderReschedule();
+    notifyListeners();
+  }
+
   Future<void> setNotifDelivery(bool v) => setDeliveryMode(v ? ReminderMode.alarm : ReminderMode.none);
   Future<void> setNotifFitting(bool v) => setFittingMode(v ? ReminderMode.alarm : ReminderMode.none);
   Future<void> setNotifPayments(bool v) => setPaymentsMode(v ? ReminderMode.notification : ReminderMode.none);
   Future<void> setNotifLate(bool v) => setLateMode(v ? ReminderMode.notification : ReminderMode.none);
+  Future<void> setNotifApprentice(bool v) => setApprenticeMode(v ? ReminderMode.alarm : ReminderMode.none);
 
   Future<void> setReminderGuideDismissed(bool v) async {
     final str = v ? 'true' : 'false';
@@ -339,9 +350,11 @@ class AppStore extends ChangeNotifier {
       deliveryEnabled: notifDelivery,
       fittingEnabled: notifFitting,
       paymentsEnabled: notifPayments,
+      apprenticeEnabled: notifApprentice,
       deliveryMode: deliveryMode,
       fittingMode: fittingMode,
       paymentsMode: paymentsMode,
+      apprenticeMode: apprenticeMode,
     );
   }
 
@@ -358,9 +371,11 @@ class AppStore extends ChangeNotifier {
         deliveryEnabled: notifDelivery,
         fittingEnabled: notifFitting,
         paymentsEnabled: notifPayments,
+        apprenticeEnabled: notifApprentice,
         deliveryMode: deliveryMode,
         fittingMode: fittingMode,
         paymentsMode: paymentsMode,
+        apprenticeMode: apprenticeMode,
       );
     } else {
       _triggerReminderReschedule();

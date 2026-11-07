@@ -67,12 +67,14 @@ void main() {
     // Vérifier les libellés de catégories
     expect(find.text('Livraisons'), findsOneWidget);
     expect(find.text('Essayages'), findsOneWidget);
-    expect(find.text('Paiements'), findsOneWidget);
+    expect(find.text('Échéances d\'apprentis'), findsOneWidget);
+    expect(find.text('Soldes en attente'), findsOneWidget);
     expect(find.text('Commandes en retard'), findsOneWidget);
 
-    // Par défaut : Livraisons et Essayages sont en Alarme
+    // Par défaut : Livraisons, Essayages et Échéances d'apprentis sont en Alarme
     expect(store.deliveryMode, equals(ReminderMode.alarm));
     expect(store.fittingMode, equals(ReminderMode.alarm));
+    expect(store.apprenticeMode, equals(ReminderMode.alarm));
     expect(store.paymentsMode, equals(ReminderMode.notification));
     expect(store.lateMode, equals(ReminderMode.notification));
 

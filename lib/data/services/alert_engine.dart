@@ -97,6 +97,8 @@ class PlannedReminder {
     required this.title,
     required this.body,
     required this.entityId,
+    this.publicTitle,
+    this.publicBody,
     this.isAlarm = false,
   });
 
@@ -108,7 +110,16 @@ class PlannedReminder {
   final String title;
   final String body;
   final String entityId;
+  final String? publicTitle;
+  final String? publicBody;
   final bool isAlarm;
+
+  String get effectivePublicTitle => publicTitle ?? title;
+  String get effectivePublicBody =>
+      publicBody ??
+      (family == AlertFamily.apprenticeDue
+          ? AlertStrings.publicBodyForApprentices(1)
+          : AlertStrings.publicBodyForOrders(1));
 
   @override
   String toString() =>
@@ -124,6 +135,8 @@ class GroupedReminder {
     required this.body,
     required this.alertKeys,
     required this.isGroup,
+    this.publicTitle,
+    this.publicBody,
     this.isAlarm = false,
   });
 
@@ -134,7 +147,12 @@ class GroupedReminder {
   final String body;
   final List<String> alertKeys;
   final bool isGroup;
+  final String? publicTitle;
+  final String? publicBody;
   final bool isAlarm;
+
+  String get effectivePublicTitle => publicTitle ?? title;
+  String get effectivePublicBody => publicBody ?? body;
 
   @override
   String toString() =>
@@ -445,14 +463,16 @@ class AlertEngine {
     bool deliveryEnabled = true,
     bool fittingEnabled = true,
     bool paymentsEnabled = true,
+    bool apprenticeEnabled = true,
     ReminderMode? deliveryMode,
     ReminderMode? fittingMode,
     ReminderMode? paymentsMode,
+    ReminderMode? apprenticeMode,
     int maxWindowDays = 45,
   }) {
     final dMode = deliveryMode ?? (deliveryEnabled ? ReminderMode.alarm : ReminderMode.none);
     final fMode = fittingMode ?? (fittingEnabled ? ReminderMode.alarm : ReminderMode.none);
-    final pMode = paymentsMode ?? (paymentsEnabled ? ReminderMode.notification : ReminderMode.none);
+    final aMode = apprenticeMode ?? (apprenticeEnabled ? ReminderMode.alarm : ReminderMode.none);
 
     final reminders = <PlannedReminder>[];
     final maxDate = now.add(Duration(days: maxWindowDays));
@@ -477,14 +497,17 @@ class AlertEngine {
         // La veille à 18:00
         final eve = DateTime(f.year, f.month, f.day - 1, 18, 0);
         if (eve.isAfter(now) && !eve.isAfter(maxDate)) {
+          final title = AlertStrings.fittingTomorrow(timeStr);
           reminders.add(PlannedReminder(
             id: 'fitting_eve_${order.id}_$fDayKey',
             scheduledAt: eve,
             alertKey: 'essayage:demain:${order.id}:$fDayKey',
             family: AlertFamily.fitting,
             stage: AlertStage.tomorrow,
-            title: AlertStrings.fittingTomorrow(timeStr),
+            title: title,
             body: body,
+            publicTitle: title,
+            publicBody: AlertStrings.publicBodyForOrders(1),
             entityId: order.id,
             isAlarm: isAlarm,
           ));
@@ -495,14 +518,17 @@ class AlertEngine {
             ? f.subtract(const Duration(hours: 1))
             : DateTime(f.year, f.month, f.day, 8, 0);
         if (sameDay.isAfter(now) && !sameDay.isAfter(maxDate)) {
+          final title = AlertStrings.fittingToday(timeStr);
           reminders.add(PlannedReminder(
             id: 'fitting_day_${order.id}_$fDayKey',
             scheduledAt: sameDay,
             alertKey: 'essayage:aujourdhui:${order.id}:$fDayKey',
             family: AlertFamily.fitting,
             stage: AlertStage.today,
-            title: AlertStrings.fittingToday(timeStr),
+            title: title,
             body: body,
+            publicTitle: title,
+            publicBody: AlertStrings.publicBodyForOrders(1),
             entityId: order.id,
             isAlarm: isAlarm,
           ));
@@ -526,6 +552,8 @@ class AlertEngine {
             stage: AlertStage.tomorrow,
             title: AlertStrings.deliveryTomorrow,
             body: body,
+            publicTitle: AlertStrings.deliveryTomorrow,
+            publicBody: AlertStrings.publicBodyForOrders(1),
             entityId: order.id,
             isAlarm: isAlarm,
           ));
@@ -542,6 +570,8 @@ class AlertEngine {
             stage: AlertStage.today,
             title: AlertStrings.deliveryToday,
             body: body,
+            publicTitle: AlertStrings.deliveryToday,
+            publicBody: AlertStrings.publicBodyForOrders(1),
             entityId: order.id,
             isAlarm: isAlarm,
           ));
@@ -550,8 +580,8 @@ class AlertEngine {
     }
 
     // (c) Rappels d'échéance apprenti
-    if (pMode != ReminderMode.none) {
-      final isAlarm = pMode == ReminderMode.alarm;
+    if (aMode != ReminderMode.none) {
+      final isAlarm = aMode == ReminderMode.alarm;
       for (final apprentice in apprentices) {
         final rem = remainingOfApprentice(apprentice);
         final due = apprentice.nextDue;
@@ -571,6 +601,8 @@ class AlertEngine {
             stage: AlertStage.today,
             title: AlertStrings.apprenticeToday,
             body: body,
+            publicTitle: AlertStrings.apprenticeToday,
+            publicBody: AlertStrings.publicBodyForApprentices(1),
             entityId: apprentice.id,
             isAlarm: isAlarm,
           ));
@@ -595,9 +627,11 @@ class AlertEngine {
     bool deliveryEnabled = true,
     bool fittingEnabled = true,
     bool paymentsEnabled = true,
+    bool apprenticeEnabled = true,
     ReminderMode? deliveryMode,
     ReminderMode? fittingMode,
     ReminderMode? paymentsMode,
+    ReminderMode? apprenticeMode,
     int maxWindowDays = 45,
     int maxReminders = 120,
   }) {
@@ -611,9 +645,11 @@ class AlertEngine {
       deliveryEnabled: deliveryEnabled,
       fittingEnabled: fittingEnabled,
       paymentsEnabled: paymentsEnabled,
+      apprenticeEnabled: apprenticeEnabled,
       deliveryMode: deliveryMode,
       fittingMode: fittingMode,
       paymentsMode: paymentsMode,
+      apprenticeMode: apprenticeMode,
       maxWindowDays: maxWindowDays,
     );
 
@@ -650,6 +686,8 @@ class AlertEngine {
           scheduledAt: single.scheduledAt,
           title: single.title,
           body: single.body,
+          publicTitle: single.effectivePublicTitle,
+          publicBody: single.effectivePublicBody,
           alertKeys: [single.alertKey],
           isGroup: false,
           isAlarm: anyAlarm,
@@ -664,11 +702,23 @@ class AlertEngine {
           lines.add('+ ${items.length - 4} autres');
         }
 
+        final orderCount = items
+            .where((i) => i.family == AlertFamily.delivery || i.family == AlertFamily.fitting)
+            .length;
+        final apprenticeCount =
+            items.where((i) => i.family == AlertFamily.apprenticeDue).length;
+        final pubBody = AlertStrings.publicBodyForCount(
+          orderCount: orderCount,
+          apprenticeCount: apprenticeCount,
+        );
+
         result.add(GroupedReminder(
           id: id,
           scheduledAt: minute,
           title: title,
           body: lines.join('\n'),
+          publicTitle: title,
+          publicBody: pubBody,
           alertKeys: items.map((e) => e.alertKey).toList(),
           isGroup: true,
           isAlarm: anyAlarm,
