@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import '../data/services/app_lock_manager.dart';
+import '../data/services/system_reminder_service.dart';
 import '../ui.dart';
 
 /// Bannière de notification élégante qui s'affiche en haut de l'écran
@@ -33,6 +34,11 @@ class InAppNotificationBanner extends StatefulWidget {
     try {
       final lockManager = Provider.of<AppLockManager?>(context, listen: false);
       if (lockManager != null && lockManager.isLocked) return;
+    } catch (_) {}
+
+    try {
+      final reminderService = Provider.of<SystemReminderService?>(context, listen: false);
+      reminderService?.logInAppBanner(title: title, body: body);
     } catch (_) {}
 
     _currentEntry?.remove();

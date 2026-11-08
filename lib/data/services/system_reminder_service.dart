@@ -8,8 +8,10 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../../core/app_brand.dart';
 import '../models.dart';
+import '../repositories/notification_log_repository.dart';
 import '../repositories/settings_repository.dart';
 import 'alert_engine.dart';
+import 'native_alarm_bridge.dart';
 import 'notification_center_service.dart';
 
 /// Gestionnaire d'actions en arrière-plan invoqué par Android lorsque l'app est fermée.
@@ -25,13 +27,13 @@ void notificationActionBackgroundHandler(NotificationResponse response) async {
   final plugin = FlutterLocalNotificationsPlugin();
 
   if (actionId == SystemReminderService.kActionDone) {
-    // Action « Arrêter » : annule immédiatement la notification et coupe l'alarme
+    // Action « Fait » / « Arrêter » : annule immédiatement la notification
     await plugin.cancel(id: notificationId);
     return;
   }
 
   if (actionId == SystemReminderService.kActionSnooze) {
-    // Action « Reporter 10 min » : annule l'alarme actuelle et replanifie à +10 minutes
+    // Action « Reporter 10 min » : annule et replanifie à +10 minutes
     await plugin.cancel(id: notificationId);
 
     if (payloadRaw != null && payloadRaw.isNotEmpty) {
@@ -49,7 +51,7 @@ void notificationActionBackgroundHandler(NotificationResponse response) async {
           'title': title,
           'body': body,
           'id': snoozeId,
-          'isAlarm': true,
+          'isAlarm': false,
         });
 
         await plugin.zonedSchedule(
@@ -57,7 +59,7 @@ void notificationActionBackgroundHandler(NotificationResponse response) async {
           title: title,
           body: body,
           scheduledDate: snoozeTime,
-          notificationDetails: SystemReminderService.alarmNotificationDetails,
+          notificationDetails: SystemReminderService.standardNotificationDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           payload: snoozePayload,
         );
@@ -72,10 +74,15 @@ void notificationActionBackgroundHandler(NotificationResponse response) async {
 class SystemReminderService {
   SystemReminderService({
     FlutterLocalNotificationsPlugin? plugin,
+    NativeAlarmBridge? nativeBridge,
+    this.logRepo,
     this.alertEngine = const AlertEngine(),
-  }) : plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  })  : plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+        nativeBridge = nativeBridge ?? const MethodChannelNativeAlarmBridge();
 
   final FlutterLocalNotificationsPlugin plugin;
+  final NativeAlarmBridge nativeBridge;
+  final NotificationLogRepository? logRepo;
   final AlertEngine alertEngine;
 
   static const String kAlarmChannelId = 'alarmes_douces_v3';
@@ -102,7 +109,7 @@ class SystemReminderService {
   Timer? _debounceTimer;
   final List<Timer> _activeTimers = [];
 
-  /// Détails pour les alarmes plein écran (sonnerie douce & vibration en continu jusqu'à 60s).
+  /// Détails pour les alarmes plein écran (utilisé comme référence / repli).
   static NotificationDetails get alarmNotificationDetails => NotificationDetails(
         android: AndroidNotificationDetails(
           kAlarmChannelId,
@@ -116,7 +123,7 @@ class SystemReminderService {
           sound: const RawResourceAndroidNotificationSound('gentle_alarm'),
           playSound: true,
           additionalFlags: Int32List.fromList(<int>[4]), // FLAG_INSISTENT : sonne en boucle
-          timeoutAfter: 60000, // 1 minute max (60 secondes)
+          timeoutAfter: 60000,
           icon: 'ic_stat_notification',
           color: const Color(0xFF1747B8),
           visibility: NotificationVisibility.private,
@@ -168,7 +175,7 @@ class SystemReminderService {
       );
 
   /// Configuration par défaut rétrocompatible.
-  static NotificationDetails get notificationDetails => alarmNotificationDetails;
+  static NotificationDetails get notificationDetails => standardNotificationDetails;
 
   /// Initialise le plugin de notification et configure les fuseaux horaires.
   Future<void> init({
@@ -253,6 +260,13 @@ class SystemReminderService {
         }
       }
     } catch (_) {}
+
+    try {
+      final launchedFromNativeAlarm = await nativeBridge.consumeOpenNotifications();
+      if (launchedFromNativeAlarm) {
+        NotificationCenterService.pendingOpenNotifications = true;
+      }
+    } catch (_) {}
   }
 
   /// Vérifie si l'application dispose de l'autorisation de poster des notifications.
@@ -275,9 +289,17 @@ class SystemReminderService {
   /// Vérifie si les alarmes exactes sont autorisées par le système Android.
   Future<bool> canScheduleExactAlarms() async {
     if (kIsWeb || !Platform.isAndroid) return true;
+    final bridgeVal = await nativeBridge.canScheduleExactAlarms();
+    if (bridgeVal) return true;
     final androidImpl =
         plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     return await androidImpl?.canScheduleExactNotifications() ?? true;
+  }
+
+  /// Vérifie si l'intention plein écran est utilisable (Android 14+).
+  Future<bool> canUseFullScreenIntent() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    return await nativeBridge.canUseFullScreenIntent();
   }
 
   /// Déclenche une replanification complète avec temporisation anti-rafales (debounce).
@@ -296,7 +318,7 @@ class SystemReminderService {
     ReminderMode? paymentsMode,
     ReminderMode? apprenticeMode,
     DateTime? customNow,
-    Duration debounceDuration = const Duration(milliseconds: 500),
+    Duration debounceDuration = const Duration(milliseconds: 300),
   }) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(debounceDuration, () {
@@ -338,7 +360,7 @@ class SystemReminderService {
   }) async {
     final now = customNow ?? DateTime.now();
 
-    // 1. Annule UNIQUEMENT les notifications de type « plan »
+    // 1. Annule UNIQUEMENT les notifications de type « plan » dans le plugin
     final pending = await plugin.pendingNotificationRequests();
     for (final request in pending) {
       final payloadStr = request.payload;
@@ -372,6 +394,12 @@ class SystemReminderService {
       maxReminders: 120,
     );
 
+    final alarms = grouped.where((g) => g.isAlarm).toList();
+    final notifications = grouped.where((g) => !g.isAlarm).toList();
+
+    // 3. Planification des alarmes de réveil via le pont natif Kotlin
+    await nativeBridge.replacePlan(alarms);
+
     final canExact = await canScheduleExactAlarms();
     final scheduleMode = canExact
         ? AndroidScheduleMode.exactAllowWhileIdle
@@ -382,10 +410,11 @@ class SystemReminderService {
     }
     _activeTimers.clear();
 
-    for (final g in grouped) {
+    // 4. Planification des notifications simples calmes via flutter_local_notifications
+    for (final g in notifications) {
       final tzTime = tz.TZDateTime.from(g.scheduledAt, tz.local);
-      final title = g.isAlarm ? g.effectivePublicTitle : g.title;
-      final body = g.isAlarm ? g.effectivePublicBody : g.body;
+      final title = g.title;
+      final body = g.body;
 
       final payload = jsonEncode({
         'type': kPayloadTypePlan,
@@ -395,21 +424,212 @@ class SystemReminderService {
         'publicBody': g.effectivePublicBody,
         'id': g.id,
         'keys': g.alertKeys,
-        'isAlarm': g.isAlarm,
+        'isAlarm': false,
       });
-
-      final details = g.isAlarm ? alarmNotificationDetails : standardNotificationDetails;
 
       await plugin.zonedSchedule(
         id: g.id,
         title: title,
         body: body,
         scheduledDate: tzTime,
-        notificationDetails: details,
+        notificationDetails: standardNotificationDetails,
         androidScheduleMode: scheduleMode,
         payload: payload,
       );
     }
+  }
+
+  /// Vide la boîte aux lettres d'événements du moteur natif et synchronise avec Drift.
+  Future<int> drainNativeEvents() async {
+    final events = await nativeBridge.drainEvents();
+    if (events.isEmpty) return 0;
+    for (final ev in events) {
+      await syncNativeEventToLog(ev);
+    }
+    return events.length;
+  }
+
+  /// Synchronise un événement d'alarme natif avec la table `notification_log`.
+  Future<void> syncNativeEventToLog(Map<String, dynamic> ev) async {
+    final repo = logRepo;
+    if (repo == null) return;
+
+    final alarmId = (ev['alarmId'] as num?)?.toInt() ?? 0;
+    final scheduledAtMs = (ev['scheduledAtMs'] as num?)?.toInt() ?? 0;
+    final timestampMs = (ev['timestampMs'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch;
+    final eventType = ev['eventType'] as String? ?? 'fired';
+    final category = ev['category'] as String? ?? 'rappel';
+    final title = ev['title'] as String? ?? 'Rappel';
+    final body = ev['body'] as String? ?? '';
+    final itemCount = (ev['itemCount'] as num?)?.toInt() ?? 1;
+    final alertKeys = (ev['alertKeys'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? <String>[];
+    final snoozeCount = (ev['snoozeCount'] as num?)?.toInt() ?? 0;
+
+    final sourceEventId = 'alarm_${alarmId}_$scheduledAtMs';
+    final scheduledAt = DateTime.fromMillisecondsSinceEpoch(scheduledAtMs, isUtc: true);
+    final timestamp = DateTime.fromMillisecondsSinceEpoch(timestampMs, isUtc: true);
+
+    final existing = await repo.getBySourceEventId(sourceEventId);
+
+    switch (eventType) {
+      case 'fired':
+        if (existing == null) {
+          await repo.logEvent(
+            channel: 'alarm',
+            category: category,
+            title: title,
+            body: body,
+            itemCount: itemCount,
+            alertKeys: alertKeys,
+            scheduledAt: scheduledAt,
+            firedAt: timestamp,
+            outcome: 'fired',
+            snoozeCount: snoozeCount,
+            sourceEventId: sourceEventId,
+          );
+        }
+        break;
+
+      case 'stopped':
+        if (existing != null) {
+          await repo.updateOutcome(
+            existing.id,
+            outcome: 'stopped',
+            endedAt: timestamp,
+          );
+        } else {
+          await repo.logEvent(
+            channel: 'alarm',
+            category: category,
+            title: title,
+            body: body,
+            itemCount: itemCount,
+            alertKeys: alertKeys,
+            scheduledAt: scheduledAt,
+            firedAt: timestamp,
+            endedAt: timestamp,
+            outcome: 'stopped',
+            snoozeCount: snoozeCount,
+            sourceEventId: sourceEventId,
+          );
+        }
+        break;
+
+      case 'snoozed':
+        if (existing != null) {
+          await repo.updateOutcome(
+            existing.id,
+            outcome: 'snoozed',
+            endedAt: timestamp,
+            snoozeCount: snoozeCount,
+          );
+        } else {
+          await repo.logEvent(
+            channel: 'alarm',
+            category: category,
+            title: title,
+            body: body,
+            itemCount: itemCount,
+            alertKeys: alertKeys,
+            scheduledAt: scheduledAt,
+            firedAt: timestamp,
+            endedAt: timestamp,
+            outcome: 'snoozed',
+            snoozeCount: snoozeCount,
+            sourceEventId: sourceEventId,
+          );
+        }
+        break;
+
+      case 'missed':
+        if (existing != null) {
+          await repo.updateOutcome(
+            existing.id,
+            outcome: 'missed',
+            endedAt: timestamp,
+          );
+        } else {
+          await repo.logEvent(
+            channel: 'alarm',
+            category: category,
+            title: title,
+            body: body,
+            itemCount: itemCount,
+            alertKeys: alertKeys,
+            scheduledAt: scheduledAt,
+            firedAt: timestamp,
+            endedAt: timestamp,
+            outcome: 'missed',
+            snoozeCount: snoozeCount,
+            sourceEventId: sourceEventId,
+          );
+        }
+        // Notification système 'Rappel manqué'
+        try {
+          await plugin.show(
+            id: (alarmId + 900000) & 0x7FFFFFFF,
+            title: 'Rappel manqué : $title',
+            body: 'L\'alarme a sonné pendant 5 minutes sans réponse.',
+            notificationDetails: standardNotificationDetails,
+            payload: jsonEncode({
+              'type': 'missed_alarm',
+              'alarmId': alarmId,
+            }),
+          );
+        } catch (_) {}
+        break;
+
+      case 'opened':
+        if (existing != null) {
+          await repo.updateOutcome(
+            existing.id,
+            outcome: 'opened',
+          );
+        } else {
+          await repo.logEvent(
+            channel: 'alarm',
+            category: category,
+            title: title,
+            body: body,
+            itemCount: itemCount,
+            alertKeys: alertKeys,
+            scheduledAt: scheduledAt,
+            firedAt: timestamp,
+            outcome: 'opened',
+            snoozeCount: snoozeCount,
+            sourceEventId: sourceEventId,
+          );
+        }
+        break;
+    }
+  }
+
+  /// Trace l'affichage d'un bandeau in-app dans le journal.
+  Future<void> logInAppBanner({
+    required String title,
+    required String body,
+    String category = 'rappel',
+    int itemCount = 1,
+    List<String> alertKeys = const [],
+    DateTime? now,
+  }) async {
+    final repo = logRepo;
+    if (repo == null) return;
+    final current = now ?? DateTime.now().toUtc();
+    try {
+      await repo.logEvent(
+        channel: 'in_app_banner',
+        category: category,
+        title: title,
+        body: body,
+        itemCount: itemCount,
+        alertKeys: alertKeys,
+        scheduledAt: current,
+        firedAt: current,
+        endedAt: current,
+        outcome: 'displayed',
+      );
+    } catch (_) {}
   }
 
   void _triggerInAppForegroundAlert({
@@ -427,20 +647,8 @@ class SystemReminderService {
     if (!isForeground) return;
 
     if (!isAlarm) {
-      // Pour une notification standard in-app : annuler le push OS pour ne pas doubler avec le bandeau
       try {
         await plugin.cancel(id: id);
-      } catch (_) {}
-    } else {
-      // Pour une alarme réveil in-app : déclencher l'alerte sonore native
-      try {
-        await plugin.show(
-          id: id,
-          title: title,
-          body: body,
-          notificationDetails: details,
-          payload: payload,
-        );
       } catch (_) {}
     }
 
@@ -452,6 +660,14 @@ class SystemReminderService {
       'keys': keys,
       'isAlarm': isAlarm,
     });
+
+    await logInAppBanner(
+      title: title,
+      body: body,
+      category: isAlarm ? 'alarm' : 'notification',
+      itemCount: 1,
+      alertKeys: keys,
+    );
   }
 
   /// Planifie un test de sonnerie ou d'alarme plein écran.
@@ -481,6 +697,22 @@ class SystemReminderService {
         : AndroidScheduleMode.inexactAllowWhileIdle;
 
     final details = asAlarm ? alarmNotificationDetails : standardNotificationDetails;
+
+    if (asAlarm) {
+      await nativeBridge.replacePlan([
+        GroupedReminder(
+          id: testId,
+          scheduledAt: DateTime.now().add(delay),
+          title: title,
+          body: body,
+          alertKeys: const ['test_alert'],
+          isGroup: false,
+          publicTitle: 'Test de sonnerie ${AppBrand.appName}',
+          publicBody: '1 rappel test',
+          isAlarm: true,
+        ),
+      ]);
+    }
 
     await plugin.zonedSchedule(
       id: testId,

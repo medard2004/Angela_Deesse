@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:angela_dress/data/models.dart';
 import 'package:angela_dress/data/repositories/settings_repository.dart';
+import 'package:angela_dress/data/services/native_alarm_bridge.dart';
 import 'package:angela_dress/data/services/notification_center_service.dart';
 import 'package:angela_dress/data/services/system_reminder_service.dart';
 
@@ -94,11 +95,16 @@ void main() {
 
   group('SystemReminderService (Décisions 13-23)', () {
     late FakeFlutterLocalNotificationsPlugin fakePlugin;
+    late FakeNativeAlarmBridge fakeBridge;
     late SystemReminderService service;
 
     setUp(() {
       fakePlugin = FakeFlutterLocalNotificationsPlugin();
-      service = SystemReminderService(plugin: fakePlugin);
+      fakeBridge = FakeNativeAlarmBridge();
+      service = SystemReminderService(
+        plugin: fakePlugin,
+        nativeBridge: fakeBridge,
+      );
     });
 
     tearDown(() {
@@ -163,6 +169,7 @@ void main() {
         remainingOfOrder: (_) => 5000,
         remainingOfApprentice: (_) => 0,
         deliveryEnabled: true,
+        deliveryMode: ReminderMode.notification,
         fittingEnabled: true,
         paymentsEnabled: true,
         customNow: now,
@@ -229,6 +236,7 @@ void main() {
           remainingOfOrder: (_) => 5000,
           remainingOfApprentice: (_) => 0,
           deliveryEnabled: true,
+          deliveryMode: ReminderMode.notification,
           fittingEnabled: true,
           paymentsEnabled: true,
           customNow: now,
@@ -293,18 +301,14 @@ void main() {
         customNow: now,
       );
 
-      expect(fakePlugin.scheduled, isNotEmpty);
-      final first = fakePlugin.scheduled.first;
+      expect(fakeBridge.lastPlan, isNotEmpty);
+      final first = fakeBridge.lastPlan.first;
       // Sur l'alarme : titre public ("Livraison demain") et corps public ("1 commande")
-      expect(first['title'], equals('Livraison demain'));
-      expect(first['body'], equals('1 commande'));
-      expect(first['body'], isNot(contains('Marguerite')));
-      expect(first['body'], isNot(contains('500k')));
-      expect(first['body'], isNot(contains('250000')));
-
-      final payload = jsonDecode(first['payload'] as String) as Map<String, dynamic>;
-      expect(payload['publicTitle'], equals('Livraison demain'));
-      expect(payload['publicBody'], equals('1 commande'));
+      expect(first.effectivePublicTitle, equals('Livraison demain'));
+      expect(first.effectivePublicBody, equals('1 commande'));
+      expect(first.effectivePublicBody, isNot(contains('Marguerite')));
+      expect(first.effectivePublicBody, isNot(contains('500k')));
+      expect(first.effectivePublicBody, isNot(contains('250000')));
     });
   });
 }

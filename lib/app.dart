@@ -57,6 +57,18 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
         );
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final reminderService = context.read<SystemReminderService?>();
+        if (reminderService != null) {
+          final launchedFromAlarm = await reminderService.nativeBridge.consumeOpenNotifications();
+          if (launchedFromAlarm) {
+            NotificationCenterService.pendingOpenNotifications = true;
+          }
+        }
+      } catch (_) {}
+    });
   }
 
   @override
@@ -89,6 +101,8 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.resumed) {
       _lockManager?.onAppResumed();
       try {
+        final reminderService = context.read<SystemReminderService?>();
+        reminderService?.drainNativeEvents();
         context.read<AppStore>().rescheduleReminders();
       } catch (_) {
         // En cas de test isolé sans AppStore

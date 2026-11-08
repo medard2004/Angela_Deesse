@@ -13,6 +13,7 @@ import 'repositories/client_repository.dart';
 import 'repositories/measurement_repository.dart';
 import 'repositories/modele_repository.dart';
 import 'repositories/finance_repository.dart';
+import 'repositories/notification_log_repository.dart';
 import 'repositories/order_repository.dart';
 import 'repositories/payment_repository.dart';
 import 'repositories/realisation_repository.dart';
@@ -49,6 +50,7 @@ class AppStore extends ChangeNotifier {
     ApprenticePaymentRepository? apprenticePaymentRepository,
     SettingsRepository? settingsRepository,
     FinanceRepository? financeRepository,
+    NotificationLogRepository? notificationLogRepository,
     SystemReminderService? reminderService,
   }) : this._(
           db ?? AppDatabase(),
@@ -63,6 +65,7 @@ class AppStore extends ChangeNotifier {
           apprenticePaymentRepository,
           settingsRepository,
           financeRepository,
+          notificationLogRepository,
           reminderService,
         );
 
@@ -79,6 +82,7 @@ class AppStore extends ChangeNotifier {
     ApprenticePaymentRepository? apprenticePaymentRepository,
     SettingsRepository? settingsRepository,
     FinanceRepository? financeRepository,
+    NotificationLogRepository? notificationLogRepository,
     this._reminderService,
   )   : _clientRepo = clientRepository ?? DriftClientRepository(db: _db, clock: _clock),
         _measurementRepo = measurementRepository ?? DriftMeasurementRepository(db: _db, clock: _clock),
@@ -89,7 +93,8 @@ class AppStore extends ChangeNotifier {
         _apprenticeRepo = apprenticeRepository ?? DriftApprenticeRepository(db: _db, clock: _clock),
         _apprenticePaymentRepo = apprenticePaymentRepository ?? DriftApprenticePaymentRepository(db: _db, clock: _clock),
         _settingsRepo = settingsRepository ?? DriftSettingsRepository(db: _db, clock: _clock),
-        _financeRepo = financeRepository ?? DriftFinanceRepository(db: _db, clock: _clock);
+        _financeRepo = financeRepository ?? DriftFinanceRepository(db: _db, clock: _clock),
+        _notificationLogRepo = notificationLogRepository ?? DriftNotificationLogRepository(db: _db, clock: _clock);
 
   final AppDatabase _db;
   final Clock _clock;
@@ -103,7 +108,10 @@ class AppStore extends ChangeNotifier {
   final ApprenticePaymentRepository _apprenticePaymentRepo;
   final SettingsRepository _settingsRepo;
   final FinanceRepository _financeRepo;
+  final NotificationLogRepository _notificationLogRepo;
   final SystemReminderService? _reminderService;
+
+  NotificationLogRepository get notificationLogRepo => _notificationLogRepo;
 
   StreamSubscription<List<Client>>? _clientSub;
   StreamSubscription<List<Measurement>>? _measurementSub;
@@ -333,6 +341,7 @@ class AppStore extends ChangeNotifier {
     });
 
     await _db.reconcileReceiptCounters();
+    await _reminderService?.drainNativeEvents();
 
     _initialized = true;
     _triggerReminderReschedule();
@@ -361,6 +370,7 @@ class AppStore extends ChangeNotifier {
   /// Replanifie immédiatement ou de façon debouncée les rappels système.
   void rescheduleReminders({bool immediate = false}) {
     if (!_initialized) return;
+    _reminderService?.drainNativeEvents();
     if (immediate) {
       _reminderService?.rescheduleAll(
         orders: orders,
