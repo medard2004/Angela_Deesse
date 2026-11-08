@@ -20,9 +20,14 @@ void main() {
       expect(manifestContent, contains('android:maxSdkVersion="32"'));
       expect(manifestContent, contains('android.permission.USE_FULL_SCREEN_INTENT'));
       // MainActivity ne doit jamais rester visible au-dessus de l'écran de verrouillage
-      expect(manifestContent, isNot(contains('android:name=".MainActivity"\n            android:exported="true"\n            android:launchMode="singleTop"\n            android:taskAffinity=""\n            android:theme="@style/LaunchTheme"\n            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"\n            android:hardwareAccelerated="true"\n            android:windowSoftInputMode="adjustResize"\n            android:showWhenLocked="true"')));
-      expect(manifestContent, isNot(contains('android:showWhenLocked="true"')));
-      expect(manifestContent, isNot(contains('android:turnScreenOn="true"')));
+      final mainActivityMatch = RegExp(r'<activity[^>]*android:name="\.MainActivity"[^>]*>', dotAll: true).firstMatch(manifestContent);
+      expect(mainActivityMatch?.group(0), isNot(contains('android:showWhenLocked="true"')));
+      expect(mainActivityMatch?.group(0), isNot(contains('android:turnScreenOn="true"')));
+
+      // AlarmActivity porte légitimement showWhenLocked et turnScreenOn pour l'écran réveil
+      final alarmActivityMatch = RegExp(r'<activity[^>]*android:name="\.AlarmActivity"[^>]*>', dotAll: true).firstMatch(manifestContent);
+      expect(alarmActivityMatch?.group(0), contains('android:showWhenLocked="true"'));
+      expect(alarmActivityMatch?.group(0), contains('android:turnScreenOn="true"'));
     });
 
     test('Receveurs de notifications déclarés', () {

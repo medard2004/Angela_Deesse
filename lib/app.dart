@@ -9,7 +9,6 @@ import 'data/services/app_lock_manager.dart';
 import 'data/services/notification_center_service.dart';
 import 'data/services/system_reminder_service.dart';
 import 'data/store.dart';
-import 'screens/alarm_ringing_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/splash_screen.dart';
 import 'widgets/in_app_notification_banner.dart';
@@ -34,45 +33,28 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
     // Écoute des alarmes et notifications survenant pendant que l'app est active
     _inAppEventSub = SystemReminderService.inAppEventStream.stream.listen((event) {
       if (!mounted) return;
-      final isAlarm = event['isAlarm'] == true;
+      final lockManager = _lockManager;
+      if (lockManager != null && lockManager.isLocked) {
+        // Écran de PIN affiché = traité comme arrière-plan, aucun bandeau in-app
+        return;
+      }
       final title = event['title'] as String? ?? 'Rappel atelier';
       final body = event['body'] as String? ?? '';
-      final id = event['id'] as int?;
 
-      if (isAlarm) {
-        if (!AlarmRingingScreen.isAlarmShowing) {
-          _navigatorKey.currentState?.push(
-            MaterialPageRoute(
-              fullscreenDialog: true,
-              builder: (_) => AlarmRingingScreen(
-                title: title,
-                body: body,
-                notificationId: id,
-              ),
-            ),
-          );
-        }
-      } else {
-        final lockManager = _lockManager;
-        if (lockManager != null && lockManager.isLocked) {
-          // Écran de PIN affiché = traité comme arrière-plan, aucun bandeau in-app
-          return;
-        }
-        final overlay = _navigatorKey.currentState?.overlay;
-        final ctx = _navigatorKey.currentContext;
-        if (ctx != null) {
-          InAppNotificationBanner.show(
-            ctx,
-            overlayState: overlay,
-            title: title,
-            body: body,
-            onTap: () {
-              try {
-                ctx.read<NotificationCenterService?>()?.requestOpenNotifications();
-              } catch (_) {}
-            },
-          );
-        }
+      final overlay = _navigatorKey.currentState?.overlay;
+      final ctx = _navigatorKey.currentContext;
+      if (ctx != null) {
+        InAppNotificationBanner.show(
+          ctx,
+          overlayState: overlay,
+          title: title,
+          body: body,
+          onTap: () {
+            try {
+              ctx.read<NotificationCenterService?>()?.requestOpenNotifications();
+            } catch (_) {}
+          },
+        );
       }
     });
   }

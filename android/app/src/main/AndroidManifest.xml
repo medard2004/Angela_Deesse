@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 
     <application
         android:label="@string/app_name"
@@ -33,6 +36,45 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Activité d'alarme plein écran : showWhenLocked, turnScreenOn, aucun moteur Flutter requis -->
+        <activity
+            android:name=".AlarmActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/AlarmTheme"
+            android:launchMode="singleInstance"
+            android:screenOrientation="portrait" />
+
+        <!-- Service de premier plan pour sonnerie douce en boucle, vibration et arrêt auto 5 min -->
+        <service
+            android:name=".AlarmService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Receveur d'alarme exacte réveillant l'appareil via WakeLock -->
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false" />
+
+        <!-- Receveur de redémarrage pour replanifier le plan et enregistrer les alarmes manquées -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Receveur d'actions de notification Arrêter et Reporter 10 min -->
+        <receiver
+            android:name=".AlarmActionReceiver"
+            android:exported="false" />
 
         <!-- Receveurs requis par flutter_local_notifications pour la persistance des alarmes -->
         <receiver
