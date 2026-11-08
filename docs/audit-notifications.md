@@ -372,3 +372,13 @@
 | **D9** : Page notifications = alertes courantes + historique 30j (arrêtée, reportée, manquée) | **PARTIEL / ABSENT** | Alertes courantes présentes ([notifications_screen.dart#L91](file:///home/othnelio/Angela/Angela_Deesse/lib/screens/notifications_screen.dart#L91)), mais **l'historique de 30 jours est totalement absent**. |
 | **D10** : Une seule source de vérité (AlertEngine) ; aucun doublon de signal | **PARTIEL** | Source unique respectée (`AlertEngine`), mais doublon effectif au premier plan pour les alarmes (notification système + plein écran Flutter simultanés, [system_reminder_service.dart#L401](file:///home/othnelio/Angela/Angela_Deesse/lib/data/services/system_reminder_service.dart#L401)). |
 
+
+## Évolution et Résolution Finale (Branche feat/alarm-engine)
+
+Tous les écarts relevés dans le présent audit ont été résolus via la refonte en 6 commits :
+1. **Sécurité et Confidentialité (Commit 1)** : Retrait de `showWhenLocked` de `MainActivity`, anonymisation des notifications publiques, catégories alignées avec réglage par défaut `alarm` pour les échéances d'apprentis.
+2. **Schéma v2 et Journal Local (Commit 2)** : Création de `notification_logs`, migration SQLite testée, zéro écriture dans `sync_outbox`, purge automatique à 30 jours.
+3. **Moteur d'Alarme Natif (Commit 3)** : `AlarmActivity`, `AlarmService` (`mediaPlayback`), sonnerie `gentle_alarm.ogg` en boucle sur `STREAM_ALARM`, actions natives « Arrêter » et « Reporter 10m », `BootReceiver` pour réveils après redémarrage.
+4. **Pont et Routage (Commit 4)** : `ReminderRouter` pur, synchronisation bidirectionnelle de la boîte aux lettres native vers SQLite via `drainNativeEvents()`.
+5. **Écran des Notifications (Commit 5)** : Refonte de `NotificationsScreen` avec section « À faire » et section « Historique (30 jours) », avec priorisation visuelle des alarmes manquées.
+6. **Documentation & Validation (Commit 6)** : Mise à jour de `CLAUDE.md`, `docs/release.md` et validation complète.

@@ -60,6 +60,9 @@ void main() {
       expect(NotificationCenterService.pendingOpenNotifications, isFalse);
       expect(find.byType(NotificationsScreen), findsOneWidget);
       expect(find.byType(HomeScreen), findsNothing);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(Duration.zero);
     });
 
     testWidgets('Notification reçue et cliquée app active : bascule vers NotificationsScreen', (tester) async {
@@ -82,6 +85,9 @@ void main() {
 
       expect(find.byType(NotificationsScreen), findsOneWidget);
       expect(NotificationCenterService.pendingOpenNotifications, isFalse);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(Duration.zero);
     });
   });
 }

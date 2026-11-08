@@ -436,16 +436,26 @@ Côté serveur (Laravel) :
   - Temporisation anti-rafale (debounce de 500 ms) pour protéger le système.
   - Idempotence : `cancel` ciblé des notifications de type `plan` uniquement, préservant les reports temporaires `snooze`.
 
-### Tranche Écran Guidé & Diagnostic pour la Release (Partie D) — Terminée
-- **Écran `ReminderGuideScreen`** (`lib/screens/reminder_guide_screen.dart`) :
-  - Accessible depuis `SettingsScreen` (ligne dédiée « Pour que les rappels sonnent » avec icône et chevron).
-  - Proposé une seule fois via dialogue doux lors de la première activation d'un interrupteur de rappel (mémorisé dans settings `reminder_guide_dismissed`).
-  - Diagnostic en direct : état de la permission `POST_NOTIFICATIONS`, état des alarmes exactes (`canScheduleExactAlarms`), état des optimisations batterie via `app_settings: 9.0.1`.
-  - Détection automatique du constructeur via `device_info_plus: 13.3.0` :
-    - Détection ciblée Transsion (Tecno, Infinix, Itel) : encadré d'instructions claires pour l'application Phone Master, le démarrage automatique et le verrouillage par cadenas dans les applications récentes.
-    - Détection Xiaomi / Redmi et Samsung avec conseils adaptés.
-  - Récapitulatif : nombre de rappels planifiés et heure du prochain rappel (sans noms de clients pour préserver la vie privée).
-  - Tests de sonnerie en conditions réelles : boutons « Dans 1 min » et « Dans 30 min » permettant à la couturière de poser son téléphone verrouillé sur l'établi et de vérifier que l'alarme retentit bien en veille prolongée.
+### Tranche Moteur d'Alarmes & Notifications Fiables (Refonte v2) — Terminée
+- **Moteur d'alarme natif Android (`AlarmActivity` & `AlarmService`)** :
+  - Déclenchement de type réveil via `AlarmManager.setAlarmClock()` indépendant du moteur Flutter.
+  - Service de premier plan Kotlin (`AlarmService`) de type `mediaPlayback` jouant en boucle `gentle_alarm.ogg` sur le flux `STREAM_ALARM` avec vibration.
+  - `AlarmActivity` plein écran avec `showWhenLocked` et `turnScreenOn` ; `MainActivity` ne possède pas ces attributs pour ne jamais exposer l'app déverrouillée au-dessus de l'écran de verrouillage.
+  - Boutons natifs « ARRÊTER » et « REPORTER 10m » sans démarrage du moteur Dart. Arrêt automatique après 5 minutes avec enregistrement d'une alarme manquée (`missed`).
+  - `BootReceiver` réinscrit automatiquement les alarmes après redémarrage du téléphone sans avoir besoin d'ouvrir l'app.
+- **Routage et dédoublonnage (`ReminderRouter` & `InAppNotificationBanner`)** :
+  - Hors de l'app ou écran verrouillé : réveil natif pour les alarmes, notifications système classiques pour les notifications.
+  - Dans l'app au premier plan et déverrouillée : bandeau in-app élégant avec annulation immédiate de la notification système (zéro doublon).
+  - Écran de PIN affiché : considéré comme arrière-plan, aucun bandeau in-app n'est projeté au-dessus du pavé numérique.
+- **Base Drift Schéma v2 & Journal local (`notification_logs`)** :
+  - Schéma monté en v2 avec migration testée.
+  - Table `notification_logs` (16 colonnes, index sur `scheduled_at` et `outcome`) 100 % locale : aucune écriture dans `sync_outbox`.
+  - Vidage automatique de la boîte aux lettres native d'événements vers Drift au démarrage et au `resumed` (`drainNativeEvents`).
+  - Purge automatique des entrées de plus de 30 jours.
+- **Centre de Notifications à Deux Sections (`NotificationsScreen`)** :
+  - Section 1 : « À faire » (alertes courantes générées par `AlertEngine`).
+  - Section 2 : « Historique (30 jours) » (historique des signaux avec mise en avant visuelle des alarmes manquées).
+  - Bouton « Tout marquer comme vu » acquittant à la fois les alertes in-app et les journaux de l'historique.
 
 
 
