@@ -14,7 +14,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   static const _filters = <(String, String)>[
     ('all', 'Toutes'), ('attente', 'En attente'), ('cours', 'En cours'),
-    ('prete', 'Prêtes'), ('retard', 'En retard'), ('livree', 'Livrées'),
+    ('essayage', 'Essayage'), ('prete', 'Prêtes'), ('retard', 'En retard'), ('livree', 'Livrées'),
   ];
 
   @override

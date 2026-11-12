@@ -30,7 +30,7 @@ class _ModeleFormScreenState extends State<ModeleFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.modele == null ? 'Nouveau modèle' : 'Modifier le modèle'), backgroundColor: Pal.chalk),
+        appBar: AppBar(title: Text(widget.modele == null ? 'Nouveau modèle' : 'Modifier le modèle')),
         body: Form(
           key: _form,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
@@ -81,7 +81,6 @@ class ModeleDetailScreen extends StatelessWidget {
     final w = MediaQuery.sizeOf(context).width - 32;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Pal.chalk,
         title: const Text('Modèle'),
         actions: [
           IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => push(context, ModeleFormScreen(modele: m))),

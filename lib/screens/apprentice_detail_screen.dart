@@ -43,7 +43,6 @@ class ApprenticeDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Pal.chalk,
         title: const Text('Fiche Apprenti'),
         actions: [
           IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => push(context, ApprenticeFormScreen(apprentice: a))),

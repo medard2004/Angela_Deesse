@@ -179,7 +179,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
     final guideWidth = paperWidth + 16.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE9EDF6),
+      backgroundColor: AppColors.of(context).background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -251,7 +251,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                                     ),
                                   ),
 
-                                  // C) Tampon circulaire centré horizontalement, placé aux ~2/3 de la hauteur,
+                                  // C) Tampon circulaire d'atelier centré horizontalement, placé aux ~2/3 de la hauteur,
                                   // incliné à -12° (-0.21 rad)
                                   Positioned(
                                     top: paperHeight * 0.58,
@@ -265,7 +265,18 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                                           alignment: Alignment.center,
                                           child: FadeTransition(
                                             opacity: _stampOpacity,
-                                            child: _StampBadge(text: widget.data.stampText),
+                                            child: Consumer<AppStore>(
+                                              builder: (_, store, __) => _StampBadge(
+                                                text: widget.data.stampText.isNotEmpty
+                                                    ? widget.data.stampText
+                                                    : store.receiptStampTitle,
+                                                atelierName: store.receiptStampAtelierName.isNotEmpty
+                                                    ? store.receiptStampAtelierName
+                                                    : store.currentAtelier.name,
+                                                mention: store.receiptStampMention,
+                                                color: Color(store.receiptStampColorValue),
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -356,17 +367,17 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                             ),
                           ),
                           const SizedBox(width: 10),
-                          // Bouton principal (clair / cobalt)
+                          // Bouton principal (noble Bogolan)
                           Expanded(
                             child: FilledButton.icon(
                               style: FilledButton.styleFrom(
-                                backgroundColor: Pal.cobalt,
-                                foregroundColor: Colors.white,
+                                backgroundColor: Pal.terreBogolan,
+                                foregroundColor: Pal.cremeCoton,
                                 minimumSize: const Size(0, 48),
                                 padding: const EdgeInsets.symmetric(horizontal: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                elevation: 3,
-                                shadowColor: Pal.cobalt.withAlpha(90),
+                                elevation: 2,
+                                shadowColor: Pal.terreBogolan.withAlpha(80),
                               ),
                               icon: const Icon(Icons.send_rounded, size: 18),
                               label: const Text('WhatsApp', maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -524,14 +535,14 @@ class _ReceiptPaperContent extends StatelessWidget {
                                 fontSize: 15,
                               ),
                             ),
-                            const Text('REÇU DE VERSEMENT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Pal.cobalt, letterSpacing: 1.2)),
+                            const Text('REÇU DE VERSEMENT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Pal.terreBogolan, letterSpacing: 1.2)),
                           ],
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(color: const Color(0xFFF1F4FD), borderRadius: BorderRadius.circular(6)),
-                        child: Text('N° ${data.receiptNo}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Pal.cobaltDark)),
+                        decoration: BoxDecoration(color: Pal.cremeCoton.withAlpha(120), borderRadius: BorderRadius.circular(6)),
+                        child: Text('N° ${data.receiptNo}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Pal.terreBogolan)),
                       ),
                     ],
                   ),
@@ -550,23 +561,23 @@ class _ReceiptPaperContent extends StatelessWidget {
                   const _DashedLine(),
                   const SizedBox(height: 5),
 
-                  // Montant versé en grand
+                  // Montant versé en grand (palette terre bogolan / crème coton)
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F5FF),
+                      color: Pal.cremeCoton.withAlpha(90),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFD6E3FF)),
+                      border: Border.all(color: Pal.bordure),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('MONTANT VERSÉ', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Pal.cobalt)),
+                        const Text('MONTANT VERSÉ', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Pal.terreBogolan)),
                         Flexible(
                           child: Text(
                             fcfa(data.amountPaid),
                             textAlign: TextAlign.end,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Pal.cobalt),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Pal.terreBogolan),
                           ),
                         ),
                       ],
@@ -593,7 +604,7 @@ class _ReceiptPaperContent extends StatelessWidget {
                       _BarcodeArt(),
                       SizedBox(height: 4),
                       Text(
-                        'Merci pour votre confiance · Angela Dress',
+                        'Merci pour votre confiance · Miva Couture',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Pal.slate, fontSize: 9.5),
                       ),
@@ -653,55 +664,89 @@ class _BarcodeArt extends StatelessWidget {
   }
 }
 
-/// C) Tampon circulaire (~30% de la largeur du papier), incliné à -12° (-0.21 rad)
+/// C) Cachet d'atelier circulaire (~30% de la largeur du papier), incliné à -12° (-0.21 rad)
+/// Personnalisable depuis les paramètres de l'application
 class _StampBadge extends StatelessWidget {
-  const _StampBadge({required this.text});
+  const _StampBadge({
+    required this.text,
+    this.atelierName = 'MIVA ATELIER',
+    this.mention = 'OFFICIEL & CERTIFIÉ',
+    this.color,
+  });
+
   final String text;
+  final String atelierName;
+  final String mention;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final stampColor = color ?? Pal.rougeBrique;
+
     return Container(
-      width: 94,
-      height: 94,
+      width: 96,
+      height: 96,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0x181747B8),
-        border: Border.all(color: Pal.cobalt, width: 2.5),
+        color: stampColor.withAlpha(18),
+        border: Border.all(color: stampColor, width: 2.2),
         boxShadow: [
-          BoxShadow(color: Pal.cobalt.withAlpha(40), blurRadius: 10, offset: const Offset(0, 3)),
+          BoxShadow(
+            color: stampColor.withAlpha(35),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Center(
         child: Container(
-          width: 82,
-          height: 82,
+          width: 84,
+          height: 84,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Pal.cobalt.withAlpha(160), width: 1.2),
+            border: Border.all(color: stampColor.withAlpha(180), width: 1.1),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.verified_rounded, color: Pal.cobalt, size: 22),
+              Icon(Icons.verified_rounded, color: stampColor, size: 20),
               const SizedBox(height: 2),
               Text(
                 text.toUpperCase(),
-                style: const TextStyle(
-                  color: Pal.cobalt,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13,
-                  letterSpacing: 1.6,
-                ),
-              ),
-              const Text(
-                'ANGELA ATELIER',
                 style: TextStyle(
-                  color: Pal.cobalt,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 6.5,
-                  letterSpacing: 1.0,
+                  fontFamily: 'Public Sans',
+                  color: stampColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12.5,
+                  letterSpacing: 1.4,
                 ),
               ),
+              const SizedBox(height: 1),
+              Text(
+                atelierName.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Public Sans',
+                  color: stampColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 6.8,
+                  letterSpacing: 0.9,
+                ),
+              ),
+              if (mention.isNotEmpty)
+                Text(
+                  mention.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Public Sans',
+                    color: stampColor.withAlpha(200),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 5.5,
+                    letterSpacing: 0.8,
+                  ),
+                ),
             ],
           ),
         ),

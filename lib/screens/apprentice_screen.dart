@@ -97,7 +97,7 @@ class _ApprenticeFormScreenState extends State<ApprenticeFormScreen> {
     final isNew = widget.apprentice == null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(isNew ? 'Nouvel apprenti' : "Modifier l'apprenti"), backgroundColor: Pal.chalk),
+      appBar: AppBar(title: Text(isNew ? 'Nouvel apprenti' : "Modifier l'apprenti")),
       body: Form(
         key: _form,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [

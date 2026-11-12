@@ -76,9 +76,8 @@ class FinanceScreen extends StatelessWidget {
                         height: maxV == 0 ? 4 : (values[i] / maxV * 100).clamp(4, 100).toDouble(),
                         margin: const EdgeInsets.symmetric(horizontal: 7),
                         decoration: BoxDecoration(
-                          gradient: i == values.length - 1 ? Pal.cobaltGradient : null,
-                          color: i == values.length - 1 ? null : const Color(0xFFE8EDFB),
-                          borderRadius: BorderRadius.circular(12),
+                          color: i == values.length - 1 ? Pal.ocre : Pal.cremeCoton.withAlpha(80),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -98,9 +97,16 @@ class FinanceScreen extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Row(children: [
                 Container(
-                  width: 48, height: 48,
-                  decoration: BoxDecoration(color: moves[i].apprentice ? const Color(0xFFE8EDFB) : const Color(0xFFDDF3EA), borderRadius: BorderRadius.circular(16)),
-                  child: Icon(moves[i].apprentice ? Icons.school_outlined : Icons.south_west_rounded, color: moves[i].apprentice ? Pal.cobalt : Pal.sage),
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: moves[i].apprentice ? Pal.cremeCoton.withAlpha(90) : Pal.statutPreteBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    moves[i].apprentice ? Icons.school_outlined : Icons.south_west_rounded,
+                    color: moves[i].apprentice ? Pal.terreBogolan : Pal.statutPreteFg,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

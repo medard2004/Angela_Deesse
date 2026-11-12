@@ -47,7 +47,6 @@ class OrderDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Pal.chalk,
         title: const Text('Commande'),
         actions: [
           IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => push(context, OrderFormScreen(order: o))),
@@ -244,7 +243,7 @@ class _Line extends StatelessWidget {
           Icon(icon, size: 18, color: Pal.slate),
           const SizedBox(width: 10),
           SizedBox(width: 80, child: Text(label, style: const TextStyle(color: Pal.slate))),
-          Expanded(child: Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color))),
+          Expanded(child: Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color ?? Theme.of(context).colorScheme.onSurface))),
         ]),
       );
 }

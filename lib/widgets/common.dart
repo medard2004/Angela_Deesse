@@ -15,13 +15,15 @@ void toast(BuildContext c, String msg) => ScaffoldMessenger.of(c).showSnackBar(S
 OutlineInputBorder _b(Color c, [double w = 1]) =>
     OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c, width: w));
 
-InputDecoration deco(String label, {String? hint, String? suffix, Widget? suffixIcon}) => InputDecoration(
+InputDecoration deco(String label, {String? hint, String? suffix, Widget? suffixIcon, Color? fillColor}) => InputDecoration(
       labelText: label, hintText: hint, suffixText: suffix, suffixIcon: suffixIcon,
       labelStyle: const TextStyle(color: Pal.slate, fontSize: 13.5),
-      floatingLabelStyle: const TextStyle(color: Pal.cobalt, fontWeight: FontWeight.w700, fontSize: 13),
-      filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      floatingLabelStyle: const TextStyle(color: Pal.ocre, fontWeight: FontWeight.w700, fontSize: 13),
+      filled: true,
+      fillColor: fillColor,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: _b(Pal.line), enabledBorder: _b(Pal.line),
-      focusedBorder: _b(Pal.cobalt, 1.5), errorBorder: _b(Pal.thread), focusedErrorBorder: _b(Pal.thread, 1.5),
+      focusedBorder: _b(Pal.ocre, 1.5), errorBorder: _b(Pal.thread), focusedErrorBorder: _b(Pal.thread, 1.5),
     );
 
 /// Permet aux écrans d'ouvrir les notifications ou la liste des commandes depuis le shell.
@@ -50,7 +52,7 @@ class SplashScope extends InheritedWidget {
 
 /// Calcule avec précision la position centrale (X, Y) du logo dans l'AppHeader
 /// en fonction des dimensions réelles de l'écran et du facteur d'échelle de police.
-Offset computeAppBarLogoCenter(BuildContext context, {String label = 'Angela Déesse'}) {
+Offset computeAppBarLogoCenter(BuildContext context, {String label = 'Miva Couture'}) {
   final mediaQuery = MediaQuery.of(context);
   final screenWidth = mediaQuery.size.width;
   final safeTop = mediaQuery.padding.top;
@@ -59,7 +61,7 @@ Offset computeAppBarLogoCenter(BuildContext context, {String label = 'Angela Dé
     text: TextSpan(
       text: label,
       style: const TextStyle(
-        fontFamily: 'Manrope',
+        fontFamily: 'Fraunces',
         fontSize: 16,
         fontWeight: FontWeight.w700,
         letterSpacing: -.3,
@@ -84,7 +86,7 @@ class BrandMark extends StatelessWidget {
     super.key,
     this.height = 22,
     this.withName = true,
-    this.label = 'Angela Déesse',
+    this.label = 'Miva Couture',
     this.heroTag,
   });
   final double height;
@@ -100,13 +102,13 @@ class BrandMark extends StatelessWidget {
       maintainSize: true,
       maintainAnimation: true,
       maintainState: true,
-      child: Image.asset('assets/images/logo_mark.png', height: height, fit: BoxFit.contain),
+      child: Image.asset('assets/brand/png/emblem_512.png', height: height, fit: BoxFit.contain),
     );
     if (heroTag != null && showLogo) {
       img = Hero(
         tag: heroTag!,
         flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-          return Image.asset('assets/images/logo_mark.png', fit: BoxFit.contain);
+          return Image.asset('assets/brand/png/emblem_512.png', fit: BoxFit.contain);
         },
         child: img,
       );
@@ -124,10 +126,11 @@ class BrandMark extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
+                fontFamily: 'Fraunces',
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: Pal.cobaltDark,
-                letterSpacing: -.3,
+                color: Pal.terreBogolan,
+                letterSpacing: -.2,
               ),
             ),
           ),
@@ -137,28 +140,51 @@ class BrandMark extends StatelessWidget {
   }
 }
 
-/// Bouton carré blanc aux coins arrondis (menu, cloche, actions).
+/// Bouton carré épuré aux coins arrondis de 12 px (menu, cloche, actions).
 class IconBox extends StatelessWidget {
   const IconBox({super.key, required this.icon, required this.onTap, this.dot = false, this.tooltip});
   final IconData icon;
   final VoidCallback onTap;
   final bool dot;
   final String? tooltip;
+
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true, label: tooltip,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), boxShadow: softShadow(14)),
-            child: Stack(alignment: Alignment.center, children: [
-              Icon(icon, size: 20, color: Pal.ink),
-              if (dot) Positioned(top: 9, right: 10, child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Pal.orange, shape: BoxShape.circle))),
-            ]),
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+            boxShadow: softShadow(colors.isDark ? 8 : 12),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(icon, size: 20, color: colors.textPrimary),
+              if (dot)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(color: Pal.ocre, shape: BoxShape.circle),
+                  ),
+                ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class Eyebrow extends StatelessWidget {
@@ -211,26 +237,34 @@ class AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayTitle = isHome ? 'Angela Déesse' : (title ?? 'Angela Déesse');
+    final colors = AppColors.of(context);
+    final displayTitle = isHome ? 'Miva Couture' : (title ?? 'Miva Couture');
 
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(220),
-        border: const Border(bottom: BorderSide(color: Color(0x12000000))),
+        color: colors.surface,
+        border: Border(bottom: BorderSide(color: colors.border)),
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Éléments de l'AppBar centrés au milieu : logo + texte
+          // Titre centré au milieu de la barre (sans aucun logo comme requis)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 56),
-              child: BrandMark(
-                height: 22,
-                label: displayTitle,
-                heroTag: isHome ? 'app_logo_mark' : null,
+              child: Text(
+                displayTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: isHome ? 'Fraunces' : 'Public Sans',
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                  letterSpacing: -0.2,
+                ),
               ),
             ),
           ),
@@ -322,19 +356,28 @@ class Panel extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
   final EdgeInsets padding, margin;
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: margin,
-        child: DecoratedBox(
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: softShadow(14)),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
-          ),
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: margin,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: kBorderRadius,
+          border: Border.all(color: colors.border),
+          boxShadow: softShadow(colors.isDark ? 6 : 10),
         ),
-      );
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: kBorderRadius,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
+        ),
+      ),
+    );
+  }
 }
 
 class Heading extends StatelessWidget {
@@ -342,40 +385,46 @@ class Heading extends StatelessWidget {
   final String text;
   final Widget? trailing;
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 12, 2, 8),
-        child: Row(children: [
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -.4))),
-          if (trailing != null) trailing!,
-        ]),
-      );
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 12, 2, 8),
+      child: Row(children: [
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -.4,
+              color: colors.textPrimary,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing!,
+      ]),
+    );
+  }
 }
 
-/// Carte à fond cobalt dégradé, avec reflets.
+/// Carte noble Bogolan (en remplacement des anciens dégradés cobalt / orange).
 class CobaltCard extends StatelessWidget {
   const CobaltCard({super.key, required this.child, this.padding = const EdgeInsets.all(18)});
   final Widget child;
   final EdgeInsets padding;
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          gradient: Pal.cobaltGradient, borderRadius: BorderRadius.circular(22),
-          boxShadow: [BoxShadow(color: Pal.cobaltDark.withAlpha(70), blurRadius: 24, offset: const Offset(0, 10))],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Stack(children: [
-            Positioned(top: -70, right: -50, child: _glow(220, const Color(0x552A8CFF))),
-            Positioned(bottom: -60, left: -50, child: _glow(170, const Color(0x44FF8A1F))),
-            Padding(padding: padding, child: child),
-          ]),
-        ),
-      );
 
-  static Widget _glow(double s, Color c) => Container(
-        width: s, height: s,
-        decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [c, c.withAlpha(0)])),
-      );
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Pal.terreBogolan,
+        borderRadius: kBorderRadius,
+        border: Border.all(color: Pal.ocre.withAlpha(120), width: 1.2),
+        boxShadow: softShadow(14),
+      ),
+      child: Padding(padding: padding, child: child),
+    );
+  }
 }
 
 class EmptyState extends StatelessWidget {
@@ -383,91 +432,128 @@ class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? hint;
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-        child: Column(children: [
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(14)),
-            child: Icon(icon, size: 26, color: Pal.cobalt),
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      child: Column(children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+            boxShadow: softShadow(colors.isDark ? 6 : 10),
           ),
-          const SizedBox(height: 14),
-          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-          if (hint != null) ...[
-            const SizedBox(height: 6),
-            Text(hint!, textAlign: TextAlign.center, style: const TextStyle(color: Pal.slate, fontSize: 13, height: 1.35)),
-          ],
-        ]),
-      );
+          child: Icon(icon, size: 26, color: Pal.ocre),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: colors.textPrimary,
+          ),
+        ),
+        if (hint != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            hint!,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: colors.textSecondary, fontSize: 13, height: 1.35),
+          ),
+        ],
+      ]),
+    );
+  }
 }
 
 class StatusChip extends StatelessWidget {
   const StatusChip(this.status, {super.key, this.late = false});
   final OrderStatus status;
   final bool late;
+
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, label) = late
-        ? (const Color(0xFFFBE1E3), Pal.thread, 'En retard')
-        : switch (status) {
-            OrderStatus.attente => (const Color(0xFFE8EDFB), const Color(0xFF4A5C8F), status.label),
-            OrderStatus.cours => (const Color(0xFFFDEBDD), const Color(0xFFB45309), status.label),
-            OrderStatus.prete => (const Color(0xFFDDF3EA), Pal.sage, status.label),
-            OrderStatus.livree => (const Color(0xFFECEFF6), Pal.slate, status.label),
-          };
-    final isPulsing = late || status == OrderStatus.cours;
+    final visual = StatusVisuals.of(status, isLate: late);
+    final isPulsing = late || status == OrderStatus.cours || status == OrderStatus.essayage;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: visual.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: visual.foreground.withAlpha(50),
+          width: 0.8,
+        ),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isPulsing) ...[
-            PulsingIndicator(size: 6, color: fg, glow: false),
+            PulsingIndicator(size: 6, color: visual.foreground, glow: false),
             const SizedBox(width: 5),
           ],
-          Text(label, style: TextStyle(color: fg, fontSize: 11.5, fontWeight: FontWeight.w700)),
+          Text(
+            visual.label,
+            style: TextStyle(
+              color: visual.foreground,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Puce de filtre : cobalt quand elle est sélectionnée, texte parfaitement centré.
+/// Puce de filtre adaptée aux modes clair et sombre.
 class PillChip extends StatelessWidget {
   const PillChip({super.key, required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: selected ? Pal.cobaltGradient : null,
-            color: selected ? null : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: selected ? [BoxShadow(color: Pal.cobalt.withAlpha(60), blurRadius: 10, offset: const Offset(0, 3))] : softShadow(10),
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Pal.terreBogolan : colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? Pal.ocre : colors.border,
           ),
-          child: Center(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                fontSize: 12.5,
-                color: selected ? Colors.white : Pal.ink,
-                height: 1.1,
-              ),
+          boxShadow: softShadow(colors.isDark ? 4 : 8),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+              fontSize: 12.5,
+              color: selected ? Pal.cremeCoton : colors.textPrimary,
+              height: 1.1,
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 Future<bool> confirm(BuildContext c, String title, String message, {String action = 'Supprimer'}) async {
@@ -486,17 +572,17 @@ Future<bool> confirm(BuildContext c, String title, String message, {String actio
 }
 
 // ---------------------------------------------------------------------------
-// Photos (maquette : tuiles dégradées « demo:N » à la place des vraies photos)
+// Photos (maquette : tuiles dégradées « demo:N » aux nuances textiles africaines)
 // ---------------------------------------------------------------------------
 const _demoGradients = [
-  [Color(0xFF2563D9), Color(0xFF0B2F8F)],
-  [Color(0xFFFFB020), Color(0xFFFF6A1A)],
-  [Color(0xFF14B8A6), Color(0xFF0F766E)],
-  [Color(0xFF8B5CF6), Color(0xFF4C1D95)],
-  [Color(0xFFEC4899), Color(0xFF9D174D)],
-  [Color(0xFF38BDF8), Color(0xFF1D4ED8)],
-  [Color(0xFF334155), Color(0xFF0F172A)],
-  [Color(0xFFF59E0B), Color(0xFFB45309)],
+  [Color(0xFFC98A2B), Color(0xFF7A4E12)], // Bazin Ocre Or
+  [Color(0xFF4A2E1B), Color(0xFF2E1B0F)], // Bogolan Terre Sombre
+  [Color(0xFF9C4A2A), Color(0xFF5E2611)], // Terre Rouge Cuivrée
+  [Color(0xFF0E5A3A), Color(0xFF063320)], // Kente Vert Profond Couture
+  [Color(0xFF8A6D58), Color(0xFF5A4130)], // Brun Coton Doux
+  [Color(0xFFB3362B), Color(0xFF6B1B14)], // Pagne Rouge Brique
+  [Color(0xFFD49B45), Color(0xFF8E5616)], // Soie Ocre Dorée
+  [Color(0xFF6E5D53), Color(0xFF3A2E27)], // Lin Écru Naturel
 ];
 
 int _demoIndex = 0;
@@ -512,7 +598,7 @@ Future<String?> pickPhoto(BuildContext context) async {
         StaggeredFadeIn(
           index: 0,
           child: ListTile(
-            leading: const CircleAvatar(backgroundColor: Pal.chalk, child: Icon(Icons.photo_camera_outlined, color: Pal.cobalt)),
+            leading: const CircleAvatar(backgroundColor: Pal.cremeCoton, child: Icon(Icons.photo_camera_outlined, color: Pal.terreBogolan)),
             title: const Text('Prendre une photo', style: TextStyle(fontWeight: FontWeight.w700)),
             onTap: () => Navigator.pop(c, true),
           ),
@@ -520,7 +606,7 @@ Future<String?> pickPhoto(BuildContext context) async {
         StaggeredFadeIn(
           index: 1,
           child: ListTile(
-            leading: const CircleAvatar(backgroundColor: Pal.chalk, child: Icon(Icons.photo_library_outlined, color: Pal.cobalt)),
+            leading: const CircleAvatar(backgroundColor: Pal.cremeCoton, child: Icon(Icons.photo_library_outlined, color: Pal.terreBogolan)),
             title: const Text('Choisir dans la galerie', style: TextStyle(fontWeight: FontWeight.w700)),
             onTap: () => Navigator.pop(c, true),
           ),
@@ -592,7 +678,7 @@ class PhotoStrip extends StatelessWidget {
             child: Container(
               width: 88, height: 88, margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: softShadow(14)),
-              child: const Icon(Icons.add_a_photo_outlined, color: Pal.cobalt),
+              child: const Icon(Icons.add_a_photo_outlined, color: Pal.terreBogolan),
             ),
           ),
           for (final ph in photos)
@@ -644,7 +730,7 @@ class PickerField<T> extends StatelessWidget {
                     index: i,
                     child: ListTile(
                       title: Text(items[i].$2, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      trailing: items[i].$1 == value ? const Icon(Icons.check_circle, color: Pal.cobalt) : null,
+                      trailing: items[i].$1 == value ? const Icon(Icons.check_circle, color: Pal.terreBogolan) : null,
                       onTap: () => Navigator.pop(c, (items[i].$1,)),
                     ),
                   ),

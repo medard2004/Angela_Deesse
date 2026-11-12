@@ -52,11 +52,53 @@ class Modele {
 enum OrderStatus {
   attente('En attente'),
   cours('En cours'),
+  essayage('En essayage'),
   prete('Prête'),
   livree('Livrée');
 
   const OrderStatus(this.label);
   final String label;
+}
+
+class Atelier {
+  Atelier({
+    required this.id,
+    required this.name,
+    this.ownerName = 'Maître Styliste',
+    this.country = 'Togo',
+    this.city = 'Lomé',
+    this.currency = 'FCFA',
+    this.phone = '+228 90 12 34 56',
+    this.specialties = 'Haute couture africaine, Bazin & Wax',
+    this.isActive = true,
+  });
+
+  final String id, name, ownerName, country, city, currency, phone, specialties;
+  final bool isActive;
+
+  Map<String, Object?> toMap() => {
+        'id': id,
+        'name': name,
+        'ownerName': ownerName,
+        'country': country,
+        'city': city,
+        'currency': currency,
+        'phone': phone,
+        'specialties': specialties,
+        'isActive': isActive,
+      };
+
+  factory Atelier.fromMap(Map<String, Object?> m) => Atelier(
+        id: m['id'] as String,
+        name: _s(m['name']),
+        ownerName: _s(m['ownerName']),
+        country: _s(m['country']),
+        city: _s(m['city']),
+        currency: _s(m['currency']),
+        phone: _s(m['phone']),
+        specialties: _s(m['specialties']),
+        isActive: (m['isActive'] as bool?) ?? true,
+      );
 }
 
 class Order {

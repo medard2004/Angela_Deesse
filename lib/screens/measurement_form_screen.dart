@@ -70,7 +70,7 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
   Widget build(BuildContext context) {
     final w = (MediaQuery.sizeOf(context).width - 32 - 12) / 2;
     return Scaffold(
-      appBar: AppBar(title: const Text('Mensurations (cm)'), backgroundColor: Pal.chalk),
+      appBar: AppBar(title: const Text('Mensurations (cm)')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
         StaggeredFadeIn(
           index: 0,

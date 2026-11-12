@@ -51,8 +51,8 @@ class _ClientsScreenState extends State<ClientsScreen> {
                           onTap: () => push(context, ClientDetailScreen(clientId: list[i].id)),
                           child: Row(children: [
                             CircleAvatar(
-                              backgroundColor: Pal.chalk,
-                              child: Text(list[i].name.isEmpty ? '?' : list[i].name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
+                              backgroundColor: Pal.cremeCoton.withAlpha(80),
+                              child: Text(list[i].name.isEmpty ? '?' : list[i].name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, color: Pal.terreBogolan)),
                             ),
                             const SizedBox(width: 12),
                             Expanded(

@@ -32,7 +32,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.client == null ? 'Nouveau client' : 'Modifier le client'), backgroundColor: Pal.chalk),
+        appBar: AppBar(title: Text(widget.client == null ? 'Nouveau client' : 'Modifier le client')),
         body: Form(
           key: _form,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [

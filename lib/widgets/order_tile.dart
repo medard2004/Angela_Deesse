@@ -20,7 +20,17 @@ class OrderTile extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(client?.name ?? 'Client supprimé', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, letterSpacing: -.2)),
+            Text(
+              client?.name ?? 'Client supprimé',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14.5,
+                letterSpacing: -.2,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
             const SizedBox(height: 2),
             Text(order.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Pal.slate, fontSize: 12.5)),
             const SizedBox(height: 4),

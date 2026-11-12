@@ -14,7 +14,106 @@ class AppStore extends ChangeNotifier {
     _seed();
   }
 
-  String atelierName = 'Angela Couture';
+  String atelierName = 'Miva Couture';
+  bool isDarkMode = false;
+  bool hasCompletedOnboarding = false;
+  bool isAuthenticated = false;
+
+  // Configuration du Cachet / Tampon d'atelier sur les reçus
+  String receiptStampTitle = 'VERSÉ';
+  String receiptStampAtelierName = 'MIVA ATELIER';
+  String receiptStampMention = 'OFFICIEL & CERTIFIÉ';
+  int receiptStampColorValue = 0xFFB3362B; // Rouge brique couture par défaut
+
+  List<Atelier> ateliers = [];
+  String currentAtelierId = 'at0';
+
+  Atelier get currentAtelier => ateliers.firstWhere(
+        (a) => a.id == currentAtelierId,
+        orElse: () => ateliers.isNotEmpty
+            ? ateliers.first
+            : Atelier(id: 'at0', name: atelierName),
+      );
+
+  void updateReceiptStamp({
+    String? title,
+    String? atelierName,
+    String? mention,
+    int? colorValue,
+  }) {
+    if (title != null) receiptStampTitle = title.trim();
+    if (atelierName != null) receiptStampAtelierName = atelierName.trim();
+    if (mention != null) receiptStampMention = mention.trim();
+    if (colorValue != null) receiptStampColorValue = colorValue;
+    _commit();
+    notifyListeners();
+  }
+
+  void toggleDarkMode([bool? value]) {
+    isDarkMode = value ?? !isDarkMode;
+    notifyListeners();
+  }
+
+  void completeOnboarding() {
+    hasCompletedOnboarding = true;
+    notifyListeners();
+  }
+
+  void resetOnboarding() {
+    hasCompletedOnboarding = false;
+    isAuthenticated = false;
+    notifyListeners();
+  }
+
+  void authenticate() {
+    hasCompletedOnboarding = true;
+    isAuthenticated = true;
+    notifyListeners();
+  }
+
+  void switchAtelier(String id) {
+    if (currentAtelierId != id && ateliers.any((a) => a.id == id)) {
+      currentAtelierId = id;
+      atelierName = currentAtelier.name;
+      notifyListeners();
+    }
+  }
+
+  void addAtelier(Atelier atelier) {
+    ateliers.add(atelier);
+    currentAtelierId = atelier.id;
+    atelierName = atelier.name;
+    notifyListeners();
+  }
+
+  void updateCurrentAtelier({
+    String? name,
+    String? ownerName,
+    String? country,
+    String? city,
+    String? currency,
+    String? phone,
+    String? specialties,
+  }) {
+    final idx = ateliers.indexWhere((a) => a.id == currentAtelierId);
+    if (idx != -1) {
+      final current = ateliers[idx];
+      ateliers[idx] = Atelier(
+        id: current.id,
+        name: name ?? current.name,
+        ownerName: ownerName ?? current.ownerName,
+        country: country ?? current.country,
+        city: city ?? current.city,
+        currency: currency ?? current.currency,
+        phone: phone ?? current.phone,
+        specialties: specialties ?? current.specialties,
+        isActive: current.isActive,
+      );
+      if (name != null) atelierName = name;
+      notifyListeners();
+    }
+  }
+
   List<Client> clients = [];
   List<Measurement> measurements = [];
   List<Modele> modeles = [];
@@ -25,12 +124,40 @@ class AppStore extends ChangeNotifier {
   List<Realisation> realisations = [];
 
   void setAtelierName(String v) {
-    atelierName = v.trim().isEmpty ? 'Angela Couture' : v.trim();
+    final val = v.trim().isEmpty ? 'Miva Couture' : v.trim();
+    atelierName = val;
+    updateCurrentAtelier(name: val);
     notifyListeners();
   }
 
   // ---------- Données de démonstration ----------
   void _seed() {
+    ateliers = [
+      Atelier(
+        id: 'at0',
+        name: 'Miva Couture - Maison Mère',
+        ownerName: 'Miva Agbodjan',
+        country: 'Togo',
+        city: 'Lomé (Tokoin)',
+        currency: 'FCFA',
+        phone: '+228 90 12 34 56',
+        specialties: 'Haute couture africaine, Bazin brodé, Wax & Soie',
+        isActive: true,
+      ),
+      Atelier(
+        id: 'at1',
+        name: 'Miva Couture - Cotonou VIP',
+        ownerName: 'Miva Agbodjan',
+        country: 'Bénin',
+        city: 'Cotonou (Haie Vive)',
+        currency: 'FCFA',
+        phone: '+229 97 45 88 12',
+        specialties: 'Robes de soirée, Tenues traditionnelles, Kente',
+        isActive: true,
+      ),
+    ];
+    currentAtelierId = 'at0';
+    atelierName = ateliers.first.name;
     const names = [
       ('Ama Mensah', '90 12 34 56'), ('Yawa Kpogo', '91 45 67 89'), ('Adjoa Agbodjan', '92 33 21 08'),
       ('Akouvi Lawson', '90 77 12 40'), ('Afi Dosseh', '93 18 52 66'), ('Edem Amegah', '98 04 31 72'),
@@ -68,9 +195,9 @@ class AppStore extends ChangeNotifier {
       (2, 'Ensemble bazin brodé', 'Bazin riche', 75000, 0, OrderStatus.prete, 50000, null, 2),
       (3, 'Robe de mariage civil', 'Dentelle ivoire', 120000, 1, OrderStatus.cours, 70000, null, 0),
       (0, 'Robe pagne', 'Wax Vlisco', 38000, 3, OrderStatus.cours, 15000, null, 1),
-      (1, 'Ensemble pagne', 'Wax doré', 55000, 5, OrderStatus.attente, 25000, _day(0, 10, 30), 1),
+      (1, 'Ensemble pagne', 'Wax doré', 55000, 5, OrderStatus.essayage, 25000, _day(0, 10, 30), 1),
       (4, 'Chemise bazin', 'Bazin bleu', 28000, 9, OrderStatus.attente, 10000, null, 2),
-      (5, 'Costume 3 pièces', 'Laine anthracite', 140000, 12, OrderStatus.cours, 70000, _day(6, 15), 3),
+      (5, 'Costume 3 pièces', 'Laine anthracite', 140000, 12, OrderStatus.essayage, 70000, _day(6, 15), 3),
       (6, 'Boubou brodé', 'Brocart blanc', 95000, 14, OrderStatus.attente, 30000, _day(8, 9), 4),
       (0, 'Robe enfant', 'Coton rose', 22000, 16, OrderStatus.attente, 0, null, 5),
       (4, 'Jupe wax', 'Wax Hollandais', 18000, 20, OrderStatus.attente, 18000, null, null),

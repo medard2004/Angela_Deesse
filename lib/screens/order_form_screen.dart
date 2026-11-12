@@ -74,7 +74,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final s = context.watch<AppStore>();
     final editing = widget.order != null;
     return Scaffold(
-      appBar: AppBar(title: Text(editing ? 'Modifier la commande' : 'Nouvelle commande'), backgroundColor: Pal.chalk),
+      appBar: AppBar(title: Text(editing ? 'Modifier la commande' : 'Nouvelle commande')),
       body: Form(
         key: _form,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [

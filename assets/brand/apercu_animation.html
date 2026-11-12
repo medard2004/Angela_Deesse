@@ -1,0 +1,10 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MivaCouture - logo animé</title>
+<style>body{margin:0;font-family:system-ui,sans-serif;background:#F3E9D2;color:#4A2E1B}main{max-width:980px;margin:0 auto;padding:32px 20px}
+.p{border-radius:24px;padding:48px 24px;margin:20px 0;display:flex;justify-content:center;background:#FFFBF2}.d{background:#2B1B12}
+.p img{width:min(560px,100%)}.e img{width:200px}button{font:inherit;font-weight:600;border:0;border-radius:14px;padding:12px 22px;background:#4A2E1B;color:#F3E9D2;cursor:pointer}</style>
+<main><h1>MivaCouture, logo animé</h1><button onclick="r()">Rejouer l'animation</button>
+<div class="p"><img data-s="logo_anime_horizontal.svg" alt="Logo animé"></div>
+<div class="p d"><img data-s="logo_anime_horizontal_sur_fond_sombre.svg" alt="Logo animé sur fond sombre"></div>
+<div class="p e"><img data-s="logo_anime_emblem.svg" alt="Emblème animé"></div></main>
+<script>function r(){document.querySelectorAll("img").forEach(i=>i.src=i.dataset.s+"?"+Date.now())}r()</script></html>

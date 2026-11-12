@@ -10,17 +10,24 @@ class ClientDetailScreen extends StatelessWidget {
   const ClientDetailScreen({super.key, required this.clientId});
   final String clientId;
 
-  Widget _values(Measurement m) => Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final e in m.values.entries)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: Pal.chalk, borderRadius: BorderRadius.circular(8)),
-            child: Text.rich(TextSpan(children: [
-              TextSpan(text: '${e.key}  ', style: const TextStyle(color: Pal.slate, fontSize: 13)),
-              TextSpan(text: '${fmtMeasure(e.value)} cm', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            ])),
+  Widget _values(BuildContext context, Measurement m) {
+    final colors = AppColors.of(context);
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      for (final e in m.values.entries)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: colors.tagBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.border),
           ),
-      ]);
+          child: Text.rich(TextSpan(children: [
+            TextSpan(text: '${e.key}  ', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+            TextSpan(text: '${fmtMeasure(e.value)} cm', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: colors.textPrimary)),
+          ])),
+        ),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +40,6 @@ class ClientDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Pal.chalk,
         title: const Text('Fiche client'),
         actions: [
           IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => push(context, ClientFormScreen(client: c))),
@@ -103,7 +109,7 @@ class ClientDetailScreen extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Dernières mesures - ${fmtDate(ms.first.takenAt)}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 10),
-                _values(ms.first),
+                _values(context, ms.first),
                 if (ms.first.note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: Text(ms.first.note, style: const TextStyle(color: Pal.slate))),
               ]),
             ),
@@ -131,7 +137,7 @@ class ClientDetailScreen extends StatelessWidget {
                         },
                       ),
                     ]),
-                    _values(m),
+                    _values(context, m),
                     const SizedBox(height: 14),
                   ],
                 ],
