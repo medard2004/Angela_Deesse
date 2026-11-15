@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'alert_engine.dart';
 
+typedef InAppAlarmCallback = void Function(Map<String, dynamic> event);
+
 abstract class NativeAlarmBridge {
   Future<void> replacePlan(List<GroupedReminder> alarms);
   Future<List<Map<String, dynamic>>> drainEvents();
@@ -10,14 +12,40 @@ abstract class NativeAlarmBridge {
   Future<bool> canUseFullScreenIntent();
   Future<void> stopAlarm();
   Future<bool> consumeOpenNotifications();
+  Future<void> setAppUnlocked(bool unlocked);
 }
 
 class MethodChannelNativeAlarmBridge implements NativeAlarmBridge {
   const MethodChannelNativeAlarmBridge([
     this.channel = const MethodChannel('com.digitalvision.angela_dress/alarm_engine'),
+    this.onInAppAlarm,
   ]);
 
   final MethodChannel channel;
+  final InAppAlarmCallback? onInAppAlarm;
+
+  static InAppAlarmCallback? globalInAppAlarmHandler;
+  static bool _handlerRegistered = false;
+
+  static void ensureHandlerRegistered([MethodChannel channel = const MethodChannel('com.digitalvision.angela_dress/alarm_engine')]) {
+    if (kIsWeb || !Platform.isAndroid) return;
+    if (!_handlerRegistered) {
+      _handlerRegistered = true;
+      try {
+        channel.setMethodCallHandler(_handleNativeMethodCall);
+      } catch (_) {}
+    }
+  }
+
+  static Future<dynamic> _handleNativeMethodCall(MethodCall call) async {
+    if (call.method == 'onAlarmTriggeredInApp') {
+      try {
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        globalInAppAlarmHandler?.call(args);
+      } catch (_) {}
+    }
+    return null;
+  }
 
   static String deriveCategory(List<String> keys) {
     if (keys.isEmpty) return 'rappel';
@@ -108,6 +136,15 @@ class MethodChannelNativeAlarmBridge implements NativeAlarmBridge {
       return false;
     }
   }
+
+  @override
+  Future<void> setAppUnlocked(bool unlocked) async {
+    if (kIsWeb || !Platform.isAndroid) return;
+
+    try {
+      await channel.invokeMethod<bool>('setAppUnlocked', {'unlocked': unlocked});
+    } catch (_) {}
+  }
 }
 
 class FakeNativeAlarmBridge implements NativeAlarmBridge {
@@ -118,10 +155,16 @@ class FakeNativeAlarmBridge implements NativeAlarmBridge {
 
   bool canExact;
   bool canFullScreen;
+  bool isUnlocked = true;
   List<GroupedReminder> lastPlan = [];
   final List<Map<String, dynamic>> queuedEvents = [];
   int stopAlarmCallCount = 0;
   bool pendingOpenNotifications = false;
+
+  @override
+  Future<void> setAppUnlocked(bool unlocked) async {
+    isUnlocked = unlocked;
+  }
 
   @override
   Future<void> replacePlan(List<GroupedReminder> alarms) async {

@@ -5,6 +5,8 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -13,9 +15,66 @@ class MainActivity : FlutterActivity() {
     private val ENGINE_CHANNEL = "com.digitalvision.angela_dress/alarm_engine"
     private var pendingOpenNotifications: Boolean = false
 
+    companion object {
+        @Volatile
+        var isAppInForeground: Boolean = false
+
+        @Volatile
+        var isAppUnlocked: Boolean = false
+
+        @Volatile
+        var engineChannel: MethodChannel? = null
+
+        fun isForegroundAndUnlocked(): Boolean {
+            return isAppInForeground && isAppUnlocked
+        }
+
+        fun notifyInAppAlarm(
+            alarmId: Int,
+            title: String,
+            body: String,
+            alertKeys: List<String>
+        ): Boolean {
+            val channel = engineChannel ?: return false
+            if (!isForegroundAndUnlocked()) return false
+
+            Handler(Looper.getMainLooper()).post {
+                try {
+                    channel.invokeMethod(
+                        "onAlarmTriggeredInApp",
+                        mapOf(
+                            "id" to alarmId,
+                            "title" to title,
+                            "body" to body,
+                            "keys" to alertKeys,
+                            "isAlarm" to true
+                        )
+                    )
+                } catch (_: Exception) {}
+            }
+            return true
+        }
+    }
+
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isAppInForeground = true
+    }
+
+    override fun onPause() {
+        isAppInForeground = false
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        engineChannel = null
+        isAppInForeground = false
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -32,8 +91,16 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ENGINE_CHANNEL).setMethodCallHandler { call, result ->
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ENGINE_CHANNEL)
+        engineChannel = channel
+
+        channel.setMethodCallHandler { call, result ->
             when (call.method) {
+                "setAppUnlocked" -> {
+                    val unlocked = call.argument<Boolean>("unlocked") ?: false
+                    isAppUnlocked = unlocked
+                    result.success(true)
+                }
                 "replacePlan" -> {
                     try {
                         val rawList = call.argument<List<Map<String, Any>>>("items") ?: emptyList()

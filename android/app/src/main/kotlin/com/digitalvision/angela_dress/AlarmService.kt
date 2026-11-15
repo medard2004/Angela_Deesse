@@ -137,22 +137,22 @@ class AlarmService : Service() {
     }
 
     private fun buildForegroundNotification(): Notification {
-        // Intent pour ouvrir AlarmActivity
-        val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
+        // Intent pour ouvrir AlarmActivity (pour l'action Ouvrir, le clic sur la notification et le plein écran)
+        val openIntent = Intent(this, AlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("alarm_id", currentAlarmId)
             putExtra("title", currentTitle)
             putExtra("body", currentBody)
             putStringArrayListExtra("alert_keys", ArrayList(currentAlertKeys))
         }
-        val fullScreenPendingIntent = PendingIntent.getActivity(
+        val openPendingIntent = PendingIntent.getActivity(
             this,
             currentAlarmId,
-            fullScreenIntent,
+            openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Action Arrêter
+        // Action Ignorer -> arrête l'alarme sans ouvrir l'appli
         val dismissIntent = Intent(this, AlarmActionReceiver::class.java).apply {
             action = ACTION_DISMISS
             putExtra("alarm_id", currentAlarmId)
@@ -164,33 +164,19 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Action Reporter 10 min
-        val snoozeIntent = Intent(this, AlarmActionReceiver::class.java).apply {
-            action = ACTION_SNOOZE
-            putExtra("alarm_id", currentAlarmId)
-            putExtra("title", currentTitle)
-            putExtra("body", currentBody)
-            putStringArrayListExtra("alert_keys", ArrayList(currentAlertKeys))
-        }
-        val snoozePendingIntent = PendingIntent.getBroadcast(
-            this,
-            currentAlarmId + 2,
-            snoozeIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         return NotificationCompat.Builder(this, CHANNEL_ALARM_ID)
             .setSmallIcon(R.drawable.ic_stat_notification)
             .setContentTitle(currentTitle)
             .setContentText(currentBody)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setFullScreenIntent(fullScreenPendingIntent, true)
+            .setFullScreenIntent(openPendingIntent, true)
+            .setContentIntent(openPendingIntent)
             .setOngoing(true)
             .setAutoCancel(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(0, "Arrêter", dismissPendingIntent)
-            .addAction(0, "Reporter 10 min", snoozePendingIntent)
+            .addAction(0, "Ignorer", dismissPendingIntent)
+            .addAction(0, "Ouvrir", openPendingIntent)
             .build()
     }
 

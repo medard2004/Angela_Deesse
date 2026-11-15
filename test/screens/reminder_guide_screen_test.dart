@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:angela_dress/data/db/app_database.dart';
+import 'package:angela_dress/data/services/native_alarm_bridge.dart';
 import 'package:angela_dress/data/services/system_reminder_service.dart';
 import 'package:angela_dress/data/store.dart';
 import 'package:angela_dress/screens/reminder_guide_screen.dart';
@@ -153,7 +154,8 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final fakePlugin = FakeFlutterLocalNotificationsPlugin();
-    final reminderService = SystemReminderService(plugin: fakePlugin);
+    final fakeBridge = FakeNativeAlarmBridge();
+    final reminderService = SystemReminderService(plugin: fakePlugin, nativeBridge: fakeBridge);
     addTearDown(reminderService.dispose);
     final store = AppStore(db: db);
 
@@ -166,13 +168,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(fakePlugin.scheduled, isEmpty);
+    expect(fakeBridge.lastPlan, isEmpty);
 
     await tester.tap(find.text('Dans 1 min'));
     await tester.pumpAndSettle();
 
-    expect(fakePlugin.scheduled.length, 1);
-    expect(fakePlugin.scheduled.first['title'], 'Test de sonnerie Angela Déesse');
+    expect(fakeBridge.lastPlan.length, 1);
+    expect(fakeBridge.lastPlan.first.title, 'Test de sonnerie Angela Déesse');
 
     // Dialogue d'information présent
     expect(find.text('Test programmé'), findsOneWidget);

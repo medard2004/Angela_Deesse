@@ -79,14 +79,26 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
       if (_lockManager != manager) {
         _lockManager = manager;
         _lockManager!.onLockRequired = _onLockRequired;
+        _lockManager!.onLockStateChanged = (isLocked) {
+          _syncLockStateToNative(!isLocked);
+        };
+        _syncLockStateToNative(!manager.isLocked);
       }
     } catch (_) {
       // Ignorer si non fourni dans des tests isolés
     }
   }
 
+  void _syncLockStateToNative(bool unlocked) {
+    try {
+      final reminderService = context.read<SystemReminderService?>();
+      reminderService?.nativeBridge.setAppUnlocked(unlocked);
+    } catch (_) {}
+  }
+
   void _onLockRequired() {
     if (!mounted) return;
+    _syncLockStateToNative(false);
     _navigatorKey.currentState?.push(
       MaterialPageRoute(
         builder: (_) => const LockScreen(mode: LockMode.unlock, isRoot: false),
@@ -98,8 +110,11 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       _lockManager?.onAppPaused();
+      _syncLockStateToNative(false);
     } else if (state == AppLifecycleState.resumed) {
       _lockManager?.onAppResumed();
+      final isUnlocked = _lockManager != null ? !_lockManager!.isLocked : true;
+      _syncLockStateToNative(isUnlocked);
       try {
         final reminderService = context.read<SystemReminderService?>();
         reminderService?.drainNativeEvents();

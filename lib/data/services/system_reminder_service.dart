@@ -96,6 +96,8 @@ class SystemReminderService {
       'Notifications discrètes pour les paiements et rappels de production';
 
   static const String kActionDone = 'action_done';
+  static const String kActionDismiss = 'action_dismiss';
+  static const String kActionOpen = 'action_open';
   static const String kActionSnooze = 'action_snooze';
 
   static const String kPayloadTypePlan = 'plan';
@@ -127,18 +129,19 @@ class SystemReminderService {
           icon: 'ic_stat_notification',
           color: const Color(0xFF1747B8),
           visibility: NotificationVisibility.private,
+          ongoing: true,
           autoCancel: false,
           actions: const <AndroidNotificationAction>[
             AndroidNotificationAction(
-              kActionDone,
-              'Arrêter',
+              kActionDismiss,
+              'Ignorer',
               showsUserInterface: false,
               cancelNotification: true,
             ),
             AndroidNotificationAction(
-              kActionSnooze,
-              'Reporter 10 min',
-              showsUserInterface: false,
+              kActionOpen,
+              'Ouvrir',
+              showsUserInterface: true,
             ),
           ],
         ),
@@ -157,18 +160,19 @@ class SystemReminderService {
           icon: 'ic_stat_notification',
           color: Color(0xFF1747B8),
           visibility: NotificationVisibility.private,
-          autoCancel: true,
+          ongoing: true,
+          autoCancel: false,
           actions: <AndroidNotificationAction>[
             AndroidNotificationAction(
-              kActionDone,
-              'Fait',
+              kActionDismiss,
+              'Ignorer',
               showsUserInterface: false,
               cancelNotification: true,
             ),
             AndroidNotificationAction(
-              kActionSnooze,
-              'Reporter 10 min',
-              showsUserInterface: false,
+              kActionOpen,
+              'Ouvrir',
+              showsUserInterface: true,
             ),
           ],
         ),
@@ -196,6 +200,11 @@ class SystemReminderService {
       } catch (_) {}
     }
 
+    MethodChannelNativeAlarmBridge.ensureHandlerRegistered();
+    MethodChannelNativeAlarmBridge.globalInAppAlarmHandler = (event) {
+      inAppEventStream.add(event);
+    };
+
     const androidSettings = AndroidInitializationSettings('ic_stat_notification');
     const initSettings = InitializationSettings(android: androidSettings);
 
@@ -209,10 +218,13 @@ class SystemReminderService {
           } catch (_) {}
         }
 
-        if (response.actionId == null || response.actionId!.isEmpty) {
+        if (response.actionId == null ||
+            response.actionId!.isEmpty ||
+            response.actionId == kActionOpen) {
           NotificationCenterService.pendingOpenNotifications = true;
           onSelectNotification?.call(response);
-        } else if (response.actionId == kActionDone) {
+        } else if (response.actionId == kActionDone ||
+            response.actionId == kActionDismiss) {
           if (response.id != null) plugin.cancel(id: response.id!);
         } else if (response.actionId == kActionSnooze) {
           notificationActionBackgroundHandler(response);
@@ -699,6 +711,8 @@ class SystemReminderService {
     final details = asAlarm ? alarmNotificationDetails : standardNotificationDetails;
 
     if (asAlarm) {
+      // Pour les alarmes : UNIQUEMENT via le moteur natif Kotlin !
+      // Ne PAS appeler plugin.zonedSchedule pour éviter le doublon de notification push.
       await nativeBridge.replacePlan([
         GroupedReminder(
           id: testId,
@@ -712,32 +726,50 @@ class SystemReminderService {
           isAlarm: true,
         ),
       ]);
-    }
+    } else {
+      // Pour les notifications standard calmes : via flutter_local_notifications
+      await plugin.zonedSchedule(
+        id: testId,
+        title: title,
+        body: body,
+        scheduledDate: scheduledTime,
+        notificationDetails: details,
+        androidScheduleMode: scheduleMode,
+        payload: payload,
+      );
 
-    await plugin.zonedSchedule(
-      id: testId,
-      title: title,
-      body: body,
-      scheduledDate: scheduledTime,
-      notificationDetails: details,
-      androidScheduleMode: scheduleMode,
-      payload: payload,
-    );
+      // Pour les tests courts de notification simple (<= 2 min) :
+      // Si l'app est toujours active et déverrouillée juste avant l'échéance,
+      // on annule la notification système push pour ne pas doubler avec le bandeau in-app.
+      if (delay <= const Duration(minutes: 2)) {
+        final preCancelDelay = delay > const Duration(milliseconds: 600)
+            ? delay - const Duration(milliseconds: 400)
+            : Duration.zero;
 
-    // Minuteur au premier plan : pour les tests courts (<= 2 min) quand l'app est active
-    if (delay <= const Duration(minutes: 2)) {
-      final timer = Timer(delay, () {
-        _triggerInAppForegroundAlert(
-          id: testId,
-          title: title,
-          body: body,
-          isAlarm: asAlarm,
-          details: details,
-          payload: payload,
-          type: kPayloadTypeTest,
-        );
-      });
-      _activeTimers.add(timer);
+        final cancelTimer = Timer(preCancelDelay, () async {
+          final state = WidgetsBinding.instance.lifecycleState;
+          final isForeground = state == null || state == AppLifecycleState.resumed;
+          if (isForeground) {
+            try {
+              await plugin.cancel(id: testId);
+            } catch (_) {}
+          }
+        });
+        _activeTimers.add(cancelTimer);
+
+        final timer = Timer(delay, () {
+          _triggerInAppForegroundAlert(
+            id: testId,
+            title: title,
+            body: body,
+            isAlarm: false,
+            details: details,
+            payload: payload,
+            type: kPayloadTypeTest,
+          );
+        });
+        _activeTimers.add(timer);
+      }
     }
   }
 

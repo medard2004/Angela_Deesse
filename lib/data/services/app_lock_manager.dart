@@ -17,6 +17,7 @@ class AppLockManager {
   final DateTime Function() _clock;
 
   VoidCallback? onLockRequired;
+  void Function(bool isLocked)? onLockStateChanged;
 
   DateTime? _pausedAt;
   bool _isLocked = true;
@@ -27,6 +28,7 @@ class AppLockManager {
     required ExternalActionTracker tracker,
     DateTime Function()? clock,
     this.onLockRequired,
+    this.onLockStateChanged,
   })  : _securityService = securityService,
         _tracker = tracker,
         _clock = clock ?? DateTime.now;
@@ -39,11 +41,13 @@ class AppLockManager {
   /// Déverrouille l'application après saisie réussie du code.
   void markUnlocked() {
     _isLocked = false;
+    onLockStateChanged?.call(false);
   }
 
   /// Verrouille explicitement l'application.
   void lock() {
     _isLocked = true;
+    onLockStateChanged?.call(true);
     if (!isLockScreenShowing) {
       onLockRequired?.call();
     }
