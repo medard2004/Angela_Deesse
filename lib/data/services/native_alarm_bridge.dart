@@ -10,6 +10,10 @@ abstract class NativeAlarmBridge {
   Future<List<Map<String, dynamic>>> drainEvents();
   Future<bool> canScheduleExactAlarms();
   Future<bool> canUseFullScreenIntent();
+  Future<bool> canDrawOverlays();
+  Future<void> openOverlaySettings();
+  Future<void> openExactAlarmSettings();
+  Future<void> openFullScreenIntentSettings();
   Future<void> stopAlarm();
   Future<bool> consumeOpenNotifications();
   Future<void> setAppUnlocked(bool unlocked);
@@ -117,6 +121,45 @@ class MethodChannelNativeAlarmBridge implements NativeAlarmBridge {
   }
 
   @override
+  Future<bool> canDrawOverlays() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+
+    try {
+      final res = await channel.invokeMethod<bool>('canDrawOverlays');
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> openOverlaySettings() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+
+    try {
+      await channel.invokeMethod<bool>('openOverlaySettings');
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> openExactAlarmSettings() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+
+    try {
+      await channel.invokeMethod<bool>('openExactAlarmSettings');
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> openFullScreenIntentSettings() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+
+    try {
+      await channel.invokeMethod<bool>('openFullScreenIntentSettings');
+    } catch (_) {}
+  }
+
+  @override
   Future<void> stopAlarm() async {
     if (kIsWeb || !Platform.isAndroid) return;
 
@@ -151,14 +194,19 @@ class FakeNativeAlarmBridge implements NativeAlarmBridge {
   FakeNativeAlarmBridge({
     this.canExact = true,
     this.canFullScreen = true,
+    this.canOverlay = true,
   });
 
   bool canExact;
   bool canFullScreen;
+  bool canOverlay;
   bool isUnlocked = true;
   List<GroupedReminder> lastPlan = [];
   final List<Map<String, dynamic>> queuedEvents = [];
   int stopAlarmCallCount = 0;
+  int openOverlaySettingsCallCount = 0;
+  int openExactAlarmSettingsCallCount = 0;
+  int openFullScreenIntentSettingsCallCount = 0;
   bool pendingOpenNotifications = false;
 
   @override
@@ -183,6 +231,24 @@ class FakeNativeAlarmBridge implements NativeAlarmBridge {
 
   @override
   Future<bool> canUseFullScreenIntent() async => canFullScreen;
+
+  @override
+  Future<bool> canDrawOverlays() async => canOverlay;
+
+  @override
+  Future<void> openOverlaySettings() async {
+    openOverlaySettingsCallCount++;
+  }
+
+  @override
+  Future<void> openExactAlarmSettings() async {
+    openExactAlarmSettingsCallCount++;
+  }
+
+  @override
+  Future<void> openFullScreenIntentSettings() async {
+    openFullScreenIntentSettingsCallCount++;
+  }
 
   @override
   Future<void> stopAlarm() async {

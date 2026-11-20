@@ -215,6 +215,12 @@ class PinSecurityService {
     }
   }
 
+  /// Retourne true si un code PIN est configuré et valide.
+  Future<bool> isPinSet() async {
+    final res = await getPinStatus();
+    return res.status == PinStatus.configured;
+  }
+
   /// Retourne le nombre d'échecs consécutifs actuels.
   Future<int> getFailedAttempts() async {
     try {

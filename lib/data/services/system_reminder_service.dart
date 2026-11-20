@@ -314,6 +314,26 @@ class SystemReminderService {
     return await nativeBridge.canUseFullScreenIntent();
   }
 
+  /// Vérifie si l'affichage sur d'autres applications est autorisé (Plein écran garanti quand déverrouillé).
+  Future<bool> canDrawOverlays() async {
+    return await nativeBridge.canDrawOverlays();
+  }
+
+  /// Ouvre directement la page des paramètres système pour autoriser l'affichage sur les autres applications.
+  Future<void> openOverlaySettings() async {
+    await nativeBridge.openOverlaySettings();
+  }
+
+  /// Ouvre la page des paramètres système pour les alarmes exactes.
+  Future<void> openExactAlarmSettings() async {
+    await nativeBridge.openExactAlarmSettings();
+  }
+
+  /// Ouvre la page des paramètres système pour les intents plein écran (Android 14+).
+  Future<void> openFullScreenIntentSettings() async {
+    await nativeBridge.openFullScreenIntentSettings();
+  }
+
   /// Déclenche une replanification complète avec temporisation anti-rafales (debounce).
   void scheduleRescheduleDebounced({
     required List<Order> orders,
@@ -683,10 +703,16 @@ class SystemReminderService {
   }
 
   /// Planifie un test de sonnerie ou d'alarme plein écran.
-  Future<void> scheduleRingerTest({
+  /// Renvoie false si les autorisations nécessaires de notification manquent.
+  Future<bool> scheduleRingerTest({
     required Duration delay,
     bool asAlarm = true,
   }) async {
+    final notifsGranted = await areNotificationsGranted();
+    if (!notifsGranted) {
+      return false;
+    }
+
     final testId = (DateTime.now().millisecondsSinceEpoch ~/ 1000) & 0x7FFFFFFF;
     final scheduledTime = tz.TZDateTime.now(tz.local).add(delay);
 
@@ -771,6 +797,7 @@ class SystemReminderService {
         _activeTimers.add(timer);
       }
     }
+    return true;
   }
 
   /// Liste des requêtes de notification en attente auprès du système.

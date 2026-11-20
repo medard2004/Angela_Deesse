@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import java.util.UUID
 
@@ -14,25 +15,22 @@ class AlarmReceiver : BroadcastReceiver() {
         val body = intent.getStringExtra("body") ?: "Rappel d'atelier"
         val alertKeys = intent.getStringArrayListExtra("alert_keys") ?: arrayListOf()
 
-        // Si l'application est au premier plan ET déverrouillée :
-        // Déclencher le bandeau in-app sans service d'arrière-plan ni notification push !
-        if (MainActivity.isForegroundAndUnlocked()) {
-            val notified = MainActivity.notifyInAppAlarm(alarmId, title, body, alertKeys)
-            if (notified) {
-                // Enregistrer l'événement 'displayed' dans le journal des alarmes
-                AlarmStorage.recordEvent(
-                    context,
-                    AlarmEvent(
-                        id = UUID.randomUUID().toString(),
-                        alarmId = alarmId,
-                        alertKeys = alertKeys,
-                        outcome = "displayed",
-                        timestampMs = System.currentTimeMillis(),
-                        source = "in_app_banner"
-                    )
+        // GARDE-FOU ABSOLU : Ne JAMAIS faire sonner une alarme si les notifications sont désactivées !
+        // Sans notification, Android bloque l'UI (bannière et plein écran). L'alarme serait inarrêtable.
+        val notificationManager = NotificationManagerCompat.from(context)
+        if (!notificationManager.areNotificationsEnabled()) {
+            AlarmStorage.recordEvent(
+                context,
+                AlarmEvent(
+                    id = UUID.randomUUID().toString(),
+                    alarmId = alarmId,
+                    alertKeys = alertKeys,
+                    outcome = "blocked_missing_permission",
+                    timestampMs = System.currentTimeMillis(),
+                    source = "alarm_receiver_permission_check"
                 )
-                return
-            }
+            )
+            return
         }
 
         // Réveil du CPU par un WakeLock partiel (15 secondes max pour démarrer le service)

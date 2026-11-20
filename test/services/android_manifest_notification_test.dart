@@ -19,6 +19,7 @@ void main() {
       expect(manifestContent, contains('android.permission.SCHEDULE_EXACT_ALARM'));
       expect(manifestContent, contains('android:maxSdkVersion="32"'));
       expect(manifestContent, contains('android.permission.USE_FULL_SCREEN_INTENT'));
+      expect(manifestContent, contains('android.permission.SYSTEM_ALERT_WINDOW'));
       // MainActivity ne doit jamais rester visible au-dessus de l'écran de verrouillage
       final mainActivityMatch = RegExp(r'<activity[^>]*android:name="\.MainActivity"[^>]*>', dotAll: true).firstMatch(manifestContent);
       expect(mainActivityMatch?.group(0), isNot(contains('android:showWhenLocked="true"')));

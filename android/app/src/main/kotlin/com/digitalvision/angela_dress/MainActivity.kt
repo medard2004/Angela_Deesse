@@ -1,12 +1,15 @@
 package com.digitalvision.angela_dress
 
 import android.app.AlarmManager
+import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -59,11 +62,29 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
+        checkKeyguardAndDismissIfLocked()
     }
 
     override fun onResume() {
         super.onResume()
         isAppInForeground = true
+        checkKeyguardAndDismissIfLocked()
+    }
+
+    private fun checkKeyguardAndDismissIfLocked() {
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (km != null && km.isKeyguardLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            km.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissCancelled() {
+                    // L'utilisateur n'a pas déverrouillé son téléphone : fermer immédiatement
+                    // pour ne JAMAIS exposer MainActivity par-dessus l'écran de verrouillage
+                    finish()
+                }
+                override fun onDismissError() {
+                    finish()
+                }
+            })
+        }
     }
 
     override fun onPause() {
@@ -155,6 +176,68 @@ class MainActivity : FlutterActivity() {
                         true
                     }
                     result.success(canFullScreen)
+                }
+                "canDrawOverlays" -> {
+                    val canDraw = Settings.canDrawOverlays(this)
+                    result.success(canDraw)
+                }
+                "openOverlaySettings" -> {
+                    try {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName")
+                        ).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (_: Exception) {
+                        try {
+                            val fallbackIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(fallbackIntent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("OVERLAY_ERROR", e.message, null)
+                        }
+                    }
+                }
+                "openExactAlarmSettings" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        try {
+                            val intent = Intent(
+                                Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                Uri.parse("package:$packageName")
+                            ).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("EXACT_ALARM_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "openFullScreenIntentSettings" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        try {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                                Uri.parse("package:$packageName")
+                            ).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("FULL_SCREEN_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.success(true)
+                    }
                 }
                 "stopAlarm" -> {
                     val serviceIntent = Intent(applicationContext, AlarmService::class.java).apply {

@@ -1,4 +1,6 @@
 import '../core/app_brand.dart';
+import '../data/services/pin_security_service.dart';
+import '../data/services/system_reminder_service.dart';
 import '../ui.dart';
 import 'lock_screen.dart';
 import 'reminder_guide_screen.dart';
@@ -11,6 +13,39 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _hasPin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPinStatus();
+  }
+
+  Future<void> _checkPinStatus() async {
+    try {
+      final pinService = context.read<PinSecurityService?>();
+      if (pinService != null) {
+        final isSet = await pinService.isPinSet();
+        if (mounted) {
+          setState(() {
+            _hasPin = isSet;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handlePinAction() async {
+    if (_hasPin) {
+      await push(context, const LockScreen(mode: LockMode.change));
+    } else {
+      await push(context, const LockScreen(mode: LockMode.create, isRoot: false));
+    }
+    if (mounted) {
+      await _checkPinStatus();
+    }
+  }
+
   Future<void> _rename(AppStore s) async {
     final v = await showDialog<String>(
       context: context,
@@ -99,7 +134,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (selected != null && mounted) {
+      if (selected != ReminderMode.none) {
+        final reminderService = context.read<SystemReminderService?>();
+        if (reminderService != null) {
+          final notifs = await reminderService.areNotificationsGranted();
+          if (!notifs) {
+            final granted = await reminderService.requestNotificationsPermission();
+            if (!granted) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Autorisation manquante : les notifications doivent être activées pour choisir ce mode.'),
+                    backgroundColor: Pal.thread,
+                  ),
+                );
+              }
+              return; // Bloquer l'activation
+            }
+          }
+
+          if (selected == ReminderMode.alarm && mounted) {
+            final canOverlay = await reminderService.canDrawOverlays();
+            if (!canOverlay && mounted) {
+              final setupOverlay = await showDialog<bool>(
+                context: context,
+                builder: (c) => AlertDialog(
+                  title: const Text('Alarme plein écran', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  content: const Text(
+                    'Pour que l\'alarme prenne tout l\'écran même si votre téléphone est allumé ou sur une autre application, autorisez "Afficher sur les autres applications".',
+                    style: TextStyle(fontSize: 13.5, height: 1.4),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(c, false),
+                      child: const Text('Plus tard', style: TextStyle(color: Pal.slate)),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(c, true),
+                      style: FilledButton.styleFrom(backgroundColor: Pal.cobalt),
+                      child: const Text('Activer', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              );
+              if (setupOverlay == true) {
+                await reminderService.openOverlaySettings();
+              }
+            }
+          }
+        }
+      }
+
       await onSelect(selected);
+
       if (selected != ReminderMode.none && !s.reminderGuideDismissed && mounted) {
         await s.setReminderGuideDismissed(true);
         final open = await showDialog<bool>(
@@ -365,17 +452,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
           index: 4,
           isCard: true,
           child: Panel(
-            onTap: () => push(context, const LockScreen(mode: LockMode.change)),
+            onTap: _handlePinAction,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(children: [
-              const _Icon(Icons.lock_outline_rounded),
+              _Icon(_hasPin ? Icons.lock_outline_rounded : Icons.lock_open_rounded),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text("Changer le code d'accès", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                  Text("Modifier le code PIN et le code de récupération", style: TextStyle(color: Pal.slate, fontSize: 11.5)),
+                  Text(
+                    _hasPin ? "Changer le code d'accès" : "Créer un code d'accès",
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  Text(
+                    _hasPin
+                        ? "Modifier le code PIN et le code de récupération"
+                        : "Protéger l'accès à l'atelier par code PIN",
+                    style: const TextStyle(color: Pal.slate, fontSize: 11.5),
+                  ),
                 ]),
               ),
+              if (!_hasPin)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  margin: const EdgeInsets.only(right: 6),
+                  decoration: BoxDecoration(
+                    color: Pal.orange.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Pal.orange.withAlpha(60)),
+                  ),
+                  child: const Text(
+                    'Non défini',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Pal.orange,
+                    ),
+                  ),
+                ),
               const Icon(Icons.chevron_right_rounded, color: Pal.slate, size: 20),
             ]),
           ),

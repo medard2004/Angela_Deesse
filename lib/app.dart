@@ -7,6 +7,7 @@ import 'core/app_brand.dart';
 import 'core/theme.dart';
 import 'data/services/app_lock_manager.dart';
 import 'data/services/notification_center_service.dart';
+import 'data/services/pin_security_service.dart';
 import 'data/services/system_reminder_service.dart';
 import 'data/store.dart';
 import 'screens/lock_screen.dart';
@@ -30,12 +31,18 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Écoute des alarmes et notifications survenant pendant que l'app est active
+    // Écoute des alertes et notifications survenant pendant que l'app est active
     _inAppEventSub = SystemReminderService.inAppEventStream.stream.listen((event) {
       if (!mounted) return;
       final lockManager = _lockManager;
       if (lockManager != null && lockManager.isLocked) {
         // Écran de PIN affiché = traité comme arrière-plan, aucun bandeau in-app
+        return;
+      }
+      final isAlarm = event['isAlarm'] as bool? ?? false;
+      if (isAlarm) {
+        // Les alarmes sont gérées en plein écran par AlarmActivity / AlarmService natif,
+        // et non par un simple bandeau in-app.
         return;
       }
       final title = event['title'] as String? ?? 'Rappel atelier';
@@ -98,12 +105,31 @@ class _AngelaAppState extends State<AngelaApp> with WidgetsBindingObserver {
 
   void _onLockRequired() {
     if (!mounted) return;
-    _syncLockStateToNative(false);
-    _navigatorKey.currentState?.push(
-      MaterialPageRoute(
-        builder: (_) => const LockScreen(mode: LockMode.unlock, isRoot: false),
-      ),
-    );
+    PinSecurityService? pinService;
+    try {
+      pinService = context.read<PinSecurityService?>();
+    } catch (_) {}
+
+    if (pinService != null) {
+      pinService.isPinSet().then((hasPin) {
+        if (!hasPin || !mounted) return;
+        _syncLockStateToNative(false);
+        _navigatorKey.currentState?.push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const LockScreen(mode: LockMode.unlock, isRoot: false),
+            transitionDuration: Duration.zero,
+          ),
+        );
+      });
+    } else {
+      _syncLockStateToNative(false);
+      _navigatorKey.currentState?.push(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LockScreen(mode: LockMode.unlock, isRoot: false),
+          transitionDuration: Duration.zero,
+        ),
+      );
+    }
   }
 
   @override

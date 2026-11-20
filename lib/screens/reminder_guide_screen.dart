@@ -31,6 +31,7 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
   bool _isLoading = true;
   bool _notificationsGranted = false;
   bool _exactAlarmsAllowed = true;
+  bool _overlayAllowed = true;
   String _manufacturer = '';
   String _model = '';
   int _pendingCount = 0;
@@ -63,10 +64,12 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
 
     bool notifs = true;
     bool exact = true;
+    bool overlay = true;
 
     if (reminderService != null) {
       notifs = await reminderService.areNotificationsGranted();
       exact = await reminderService.canScheduleExactAlarms();
+      overlay = await reminderService.canDrawOverlays();
     }
 
     String man = widget.overrideManufacturer ?? '';
@@ -116,6 +119,7 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
     setState(() {
       _notificationsGranted = notifs;
       _exactAlarmsAllowed = exact;
+      _overlayAllowed = overlay;
       _manufacturer = man;
       _model = mod;
       _pendingCount = pending;
@@ -135,6 +139,13 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
     }
   }
 
+  Future<void> _requestOverlayPermission() async {
+    final reminderService = context.read<SystemReminderService?>();
+    if (reminderService != null) {
+      await reminderService.openOverlaySettings();
+    }
+  }
+
   Future<void> _openSettings(AppSettingsType type) async {
     try {
       await AppSettings.openAppSettings(type: type);
@@ -150,7 +161,105 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
     final reminderService = context.read<SystemReminderService?>();
     if (reminderService == null) return;
 
-    await reminderService.scheduleRingerTest(delay: delay, asAlarm: asAlarm);
+    // BLOQUER : Les notifications doivent obligatoirement être activées pour afficher l'alarme
+    final notifsGranted = await reminderService.areNotificationsGranted();
+    if (!notifsGranted) {
+      if (!mounted) return;
+      final shouldRequest = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.notifications_off_rounded, color: Pal.thread, size: 24),
+              SizedBox(width: 8),
+              Text('Autorisation requise', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            asAlarm
+                ? 'Les notifications sont désactivées sur votre téléphone. Pour que l\'alarme s\'affiche sur votre écran et puisse être arrêtée, vous devez autoriser les notifications.'
+                : 'Les notifications sont désactivées sur votre téléphone. Veuillez les activer pour recevoir les alertes.',
+            style: const TextStyle(fontSize: 13.5, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler', style: TextStyle(color: Pal.slate)),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: Pal.cobalt),
+              child: const Text('Activer', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldRequest == true && mounted) {
+        final granted = await reminderService.requestNotificationsPermission();
+        if (!granted && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Veuillez activer les notifications dans les paramètres de votre téléphone.'),
+              backgroundColor: Pal.thread,
+            ),
+          );
+          return;
+        }
+      } else {
+        return; // Bloqué tant que non autorisé !
+      }
+    }
+
+    // Si alarme plein écran : suggérer "Afficher sur les autres applications" si manquant
+    if (asAlarm && mounted) {
+      final canOverlay = await reminderService.canDrawOverlays();
+      if (!canOverlay && mounted) {
+        final setupOverlay = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.layers_outlined, color: Pal.cobalt, size: 22),
+                SizedBox(width: 8),
+                Text('Plein écran garanti', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              ],
+            ),
+            content: const Text(
+              'Pour que l\'alarme s\'ouvre directement en plein écran même si vous utilisez une autre application, activez « Afficher sur les autres applications ».\n\nSinon, l\'alarme apparaîtra sous forme de notification prioritaire.',
+              style: TextStyle(fontSize: 13.5, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Plus tard', style: TextStyle(color: Pal.slate)),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(backgroundColor: Pal.cobalt),
+                child: const Text('Activer', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        );
+        if (setupOverlay == true) {
+          await reminderService.openOverlaySettings();
+        }
+      }
+    }
+
+    final scheduled = await reminderService.scheduleRingerTest(delay: delay, asAlarm: asAlarm);
+    if (!scheduled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible de programmer le test sans autorisation de notification.'),
+            backgroundColor: Pal.thread,
+          ),
+        );
+      }
+      return;
+    }
     await _refreshDiagnostic();
 
     if (!mounted) return;
@@ -382,6 +491,56 @@ class _ReminderGuideScreenState extends State<ReminderGuideScreen> with WidgetsB
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           ),
                           child: const Text('Configurer', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // 3. Plein écran sur téléphone déverrouillé
+                Panel(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _overlayAllowed ? Icons.check_circle_rounded : Icons.fullscreen_rounded,
+                        color: _overlayAllowed ? Pal.sage : Pal.orange,
+                        size: 26,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Plein écran déverrouillé',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                            ),
+                            Text(
+                              'Affiche le réveil sur tout l\'écran hors veille',
+                              style: TextStyle(color: Pal.slate, fontSize: 11.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_overlayAllowed)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Pal.sage.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text('Autorisé', style: TextStyle(color: Pal.sage, fontWeight: FontWeight.w800, fontSize: 11)),
+                        )
+                      else
+                        FilledButton(
+                          onPressed: _requestOverlayPermission,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Pal.orange,
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          ),
+                          child: const Text('Autoriser', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
                         ),
                     ],
                   ),

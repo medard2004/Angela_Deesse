@@ -5,10 +5,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
@@ -20,6 +23,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import java.util.UUID
 
 class AlarmService : Service() {
@@ -47,25 +51,17 @@ class AlarmService : Service() {
     private var currentBody: String = ""
     private var currentAlertKeys: List<String> = emptyList()
 
-    private val timeoutRunnable = Runnable {
-        onTimeoutMissed()
-    }
-
-    private val volumeFadeRunnable = object : Runnable {
-        var step = 1
-        val maxSteps = 15 // 15 steps over 3 seconds (200ms per step)
-        override fun run() {
-            if (mediaPlayer != null) {
-                val vol = (step.toFloat() / maxSteps.toFloat()).coerceIn(0.1f, 1.0f)
-                try {
-                    mediaPlayer?.setVolume(vol, vol)
-                } catch (_: Exception) {}
-                if (step < maxSteps) {
-                    step++
-                    handler.postDelayed(this, 200L)
-                }
+    private var isRingerReceiverRegistered: Boolean = false
+    private val ringerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.RINGER_MODE_CHANGED_ACTION) {
+                updateAudioAndVibrationForRingerMode()
             }
         }
+    }
+
+    private val timeoutRunnable = Runnable {
+        onTimeoutMissed()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -92,6 +88,26 @@ class AlarmService : Service() {
     }
 
     private fun startAlarmForeground() {
+        // GARDE-FOU ABSOLU : Si l'utilisateur a désactivé les notifications pour l'app,
+        // Android bloque impitoyablement toute l'interface visuelle (notification et plein écran).
+        // Il est strictement interdit de faire sonner le téléphone à l'aveugle !
+        val notificationManager = NotificationManagerCompat.from(this)
+        if (!notificationManager.areNotificationsEnabled()) {
+            AlarmStorage.recordEvent(
+                this,
+                AlarmEvent(
+                    id = UUID.randomUUID().toString(),
+                    alarmId = currentAlarmId,
+                    alertKeys = currentAlertKeys,
+                    outcome = "suppressed_no_permission",
+                    timestampMs = System.currentTimeMillis(),
+                    source = "alarm_service_permission_check"
+                )
+            )
+            stopSelf()
+            return
+        }
+
         createNotificationChannels()
         acquireWakeLock()
 
@@ -107,8 +123,16 @@ class AlarmService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
 
-        startAudio()
-        startVibration()
+        // Écouter les changements de mode Silencieux/Vibreur/Normal en temps réel
+        if (!isRingerReceiverRegistered) {
+            try {
+                registerReceiver(ringerReceiver, IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION))
+                isRingerReceiverRegistered = true
+            } catch (_: Exception) {}
+        }
+
+        // Démarrer audio et vibration selon l'état actuel du téléphone
+        updateAudioAndVibrationForRingerMode()
 
         // Démarre l'activité d'alarme plein écran si possible
         launchAlarmActivity()
@@ -116,6 +140,35 @@ class AlarmService : Service() {
         // Planifie la minuterie d'arrêt de 5 minutes
         handler.removeCallbacks(timeoutRunnable)
         handler.postDelayed(timeoutRunnable, TIMEOUT_MS)
+    }
+
+    private fun updateAudioAndVibrationForRingerMode() {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val ringerMode = audioManager?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+
+        when (ringerMode) {
+            AudioManager.RINGER_MODE_SILENT -> {
+                // Silencieux : ni son, ni vibration
+                stopAudio()
+                stopVibration()
+            }
+            AudioManager.RINGER_MODE_VIBRATE -> {
+                // Vibreur : pas de son, vibration active
+                stopAudio()
+                if (vibrator == null) {
+                    startVibration()
+                }
+            }
+            AudioManager.RINGER_MODE_NORMAL -> {
+                // Normal : son et vibration respectent les volumes du téléphone
+                if (mediaPlayer == null) {
+                    startAudio()
+                }
+                if (vibrator == null) {
+                    startVibration()
+                }
+            }
+        }
     }
 
     private fun launchAlarmActivity() {
@@ -129,7 +182,15 @@ class AlarmService : Service() {
                 putExtra("body", currentBody)
                 putStringArrayListExtra("alert_keys", ArrayList(currentAlertKeys))
             }
-            startActivity(activityIntent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val options = android.app.ActivityOptions.makeBasic().apply {
+                    pendingIntentBackgroundActivityStartMode =
+                        android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                }
+                startActivity(activityIntent, options.toBundle())
+            } else {
+                startActivity(activityIntent)
+            }
         } catch (_: Exception) {
             // Si le lancement d'activité directe est restreint par l'OS,
             // le fullScreenIntent de la notification prend le relais
@@ -152,15 +213,33 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Action Ignorer -> arrête l'alarme sans ouvrir l'appli
+        // Action Arrêter -> arrête l'alarme sans ouvrir l'appli
         val dismissIntent = Intent(this, AlarmActionReceiver::class.java).apply {
             action = ACTION_DISMISS
             putExtra("alarm_id", currentAlarmId)
+            putExtra("title", currentTitle)
+            putExtra("body", currentBody)
+            putStringArrayListExtra("alert_keys", ArrayList(currentAlertKeys))
         }
         val dismissPendingIntent = PendingIntent.getBroadcast(
             this,
             currentAlarmId + 1,
             dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Action Reporter 10m -> arrête la sonnerie et replanifie à +10 minutes
+        val snoozeIntent = Intent(this, AlarmActionReceiver::class.java).apply {
+            action = ACTION_SNOOZE
+            putExtra("alarm_id", currentAlarmId)
+            putExtra("title", currentTitle)
+            putExtra("body", currentBody)
+            putStringArrayListExtra("alert_keys", ArrayList(currentAlertKeys))
+        }
+        val snoozePendingIntent = PendingIntent.getBroadcast(
+            this,
+            currentAlarmId + 2,
+            snoozeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -175,7 +254,8 @@ class AlarmService : Service() {
             .setOngoing(true)
             .setAutoCancel(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(0, "Ignorer", dismissPendingIntent)
+            .addAction(0, "Arrêter", dismissPendingIntent)
+            .addAction(0, "Reporter 10m", snoozePendingIntent)
             .addAction(0, "Ouvrir", openPendingIntent)
             .build()
     }
@@ -183,6 +263,22 @@ class AlarmService : Service() {
     private fun startAudio() {
         stopAudio()
         try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            val ringerMode = audioManager?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+
+            // Respect strict du mode Silencieux ou Vibreur du téléphone : aucun son
+            if (ringerMode == AudioManager.RINGER_MODE_SILENT || ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
+                return
+            }
+
+            // Vérifier le volume défini par l'utilisateur sur le téléphone
+            val ringVol = audioManager?.getStreamVolume(AudioManager.STREAM_RING) ?: 1
+            val notifVol = audioManager?.getStreamVolume(AudioManager.STREAM_NOTIFICATION) ?: 1
+            val alarmVol = audioManager?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1
+            if (ringVol == 0 && notifVol == 0 && alarmVol == 0) {
+                return
+            }
+
             val soundResId = resources.getIdentifier("gentle_alarm", "raw", packageName)
             val soundUri = if (soundResId != 0) {
                 Uri.parse("android.resource://$packageName/$soundResId")
@@ -193,26 +289,32 @@ class AlarmService : Service() {
             mediaPlayer = MediaPlayer().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
                 setDataSource(applicationContext, soundUri)
                 isLooping = true
-                setVolume(0.1f, 0.1f)
+                // Volume géré à 100% par le niveau sonore du téléphone
+                setVolume(1.0f, 1.0f)
                 prepare()
                 start()
             }
-
-            // Démarre le fade-in progressif sur 3 secondes
-            volumeFadeRunnable.step = 1
-            handler.post(volumeFadeRunnable)
         } catch (_: Exception) {}
     }
 
     private fun startVibration() {
         stopVibration()
         try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            val ringerMode = audioManager?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+
+            // En mode Silencieux strict : ne pas faire vibrer
+            if (ringerMode == AudioManager.RINGER_MODE_SILENT) {
+                return
+            }
+
+            // En mode Vibreur ou Normal : activer la vibration
             vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
                 vibratorManager?.defaultVibrator
@@ -232,7 +334,6 @@ class AlarmService : Service() {
     }
 
     private fun stopAudio() {
-        handler.removeCallbacks(volumeFadeRunnable)
         try {
             mediaPlayer?.let {
                 if (it.isPlaying) it.stop()
@@ -334,6 +435,12 @@ class AlarmService : Service() {
     }
 
     private fun cleanupAndStop() {
+        if (isRingerReceiverRegistered) {
+            try {
+                unregisterReceiver(ringerReceiver)
+            } catch (_: Exception) {}
+            isRingerReceiverRegistered = false
+        }
         stopAudio()
         stopVibration()
         releaseWakeLock()

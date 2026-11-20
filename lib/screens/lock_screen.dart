@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/services/app_lock_manager.dart';
 import '../data/services/pin_security_service.dart';
@@ -190,6 +191,10 @@ class _LockScreenState extends State<LockScreen> {
           setState(() => _isVerifying = true);
           final recoveryCode = await pinService.createPin(pin);
           if (!mounted) return;
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('has_skipped_pin_setup');
+          } catch (_) {}
           lockManager.markUnlocked();
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
@@ -315,6 +320,24 @@ class _LockScreenState extends State<LockScreen> {
     return true; // change mode
   }
 
+  Future<void> _skipPinCreation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_skipped_pin_setup', true);
+    } catch (_) {}
+
+    _lockManager?.markUnlocked();
+    if (!mounted) return;
+
+    if (widget.isRoot) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const AppShell()),
+      );
+    } else {
+      Navigator.of(context).pop(false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLocked = _lockoutRemaining != null && _lockoutRemaining! > Duration.zero;
@@ -334,15 +357,36 @@ class _LockScreenState extends State<LockScreen> {
                     child: IntrinsicHeight(
                       child: Column(
                         children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: _canPop
-                                ? IconButton(
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (_canPop)
+                                  IconButton(
                                     onPressed: () => Navigator.of(context).pop(),
                                     icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                                     tooltip: 'Retour',
                                   )
-                                : const SizedBox(height: 48),
+                                else
+                                  const SizedBox(width: 48, height: 48),
+                                if (widget.mode == LockMode.create && widget.isRoot)
+                                  TextButton.icon(
+                                    onPressed: _skipPinCreation,
+                                    icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white70, size: 16),
+                                    label: const Text(
+                                      'Ignorer',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(width: 48, height: 48),
+                              ],
+                            ),
                           ),
                           const Spacer(),
                           MotionCircularScale(
@@ -496,6 +540,22 @@ class _LockScreenState extends State<LockScreen> {
                               },
                               child: const Text(
                                 'Code d\'accès oublié ?',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: Colors.white38,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (widget.mode == LockMode.create && widget.isRoot) ...[
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: _skipPinCreation,
+                              child: const Text(
+                                'Définir plus tard dans les paramètres',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 13,

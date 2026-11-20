@@ -1,6 +1,8 @@
 package com.digitalvision.angela_dress
 
 import android.app.Activity
+import android.app.KeyguardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -36,7 +38,6 @@ class AlarmActivity : Activity() {
             window.addFlags(
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             )
         }
@@ -198,12 +199,32 @@ class AlarmActivity : Activity() {
     }
 
     private fun openAppNotifications() {
-        stopAlarmAndFinish()
-        val appIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("open_notifications", true)
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (km != null && km.isKeyguardLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            km.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() {
+                    stopAlarmAndFinish()
+                    val appIntent = Intent(this@AlarmActivity, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        putExtra("open_notifications", true)
+                    }
+                    startActivity(appIntent)
+                }
+                override fun onDismissCancelled() {
+                    // L'utilisateur n'a pas déverrouillé son téléphone : ne rien ouvrir
+                }
+                override fun onDismissError() {
+                    // Erreur système : ne rien ouvrir
+                }
+            })
+        } else {
+            stopAlarmAndFinish()
+            val appIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("open_notifications", true)
+            }
+            startActivity(appIntent)
         }
-        startActivity(appIntent)
     }
 
     @Suppress("DEPRECATION")

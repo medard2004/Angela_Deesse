@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_brand.dart';
 import '../core/theme.dart';
+import '../data/services/app_lock_manager.dart';
 import '../data/services/photo_storage.dart';
 import '../data/services/pin_security_service.dart';
 import '../data/store.dart';
@@ -34,6 +36,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _contentFadeAnimation;
 
   Future<void>? _initFuture;
+  Future<PinStatusResult?>? _pinStatusFuture;
   String? _initError;
 
   @override
@@ -113,11 +116,14 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _checkPinAndNavigate() async {
     PinSecurityService? pinService;
     try {
-      pinService = context.read<PinSecurityService>();
+      pinService = context.read<PinSecurityService?>();
     } catch (_) {}
 
     if (pinService == null) {
       if (!mounted) return;
+      try {
+        context.read<AppLockManager?>()?.markUnlocked();
+      } catch (_) {}
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const AppShell(),
@@ -127,8 +133,8 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    final pinStatus = await pinService.getPinStatus();
-    if (!mounted) return;
+    final pinStatus = await (_pinStatusFuture ?? pinService.getPinStatus());
+    if (!mounted || pinStatus == null) return;
 
     if (pinStatus.status == PinStatus.storageError) {
       Navigator.of(context).pushReplacement(
@@ -140,14 +146,33 @@ class _SplashScreenState extends State<SplashScreen>
         ),
       );
     } else if (pinStatus.status == PinStatus.unconfigured) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const LockScreen(
-            mode: LockMode.create,
-            isRoot: true,
+      var hasSkipped = false;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        hasSkipped = prefs.getBool('has_skipped_pin_setup') ?? false;
+      } catch (_) {}
+
+      if (!mounted) return;
+      if (hasSkipped) {
+        try {
+          context.read<AppLockManager?>()?.markUnlocked();
+        } catch (_) {}
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const AppShell(),
+            transitionDuration: Duration.zero,
           ),
-        ),
-      );
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const LockScreen(
+              mode: LockMode.create,
+              isRoot: true,
+            ),
+          ),
+        );
+      }
     } else {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -167,6 +192,12 @@ class _SplashScreenState extends State<SplashScreen>
     _initFuture ??= context.read<AppStore>().init().catchError((Object err) {
       _initError = err.toString();
     });
+    try {
+      final pinService = context.read<PinSecurityService?>();
+      if (pinService != null) {
+        _pinStatusFuture ??= pinService.getPinStatus();
+      }
+    } catch (_) {}
   }
 
   @override
@@ -256,10 +287,19 @@ class _SplashScreenState extends State<SplashScreen>
           final bgOpacity = flight > 0 ? (1.0 - flight).clamp(0.0, 1.0) : entryFade;
           final logoOpacity = flight > 0 ? 1.0 : entryFade;
 
+          // Si le service PIN est présent, l'application est protégée :
+          // on n'affiche JAMAIS AppShell en arrière-plan pendant le splash !
+          PinSecurityService? pinService;
+          try {
+            pinService = context.read<PinSecurityService?>();
+          } catch (_) {}
+          final shouldHideShell = pinService != null;
+
           return Stack(
             children: [
-              // Contenu principal qui apparaît en fondu pendant le déplacement (sur ~300 ms)
-              if (contentFade > 0)
+              // Contenu principal qui apparaît en fondu pendant le déplacement
+              // Uniquement dans les environnements de test où la sécurité PIN est absente
+              if (contentFade > 0 && !shouldHideShell)
                 Positioned.fill(
                   child: IgnorePointer(
                     ignoring: true,

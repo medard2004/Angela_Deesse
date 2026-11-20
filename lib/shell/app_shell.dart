@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 import '../data/services/notification_center_service.dart';
 import '../ui.dart';
+import '../widgets/permission_onboarding_sheet.dart';
 import '../screens/home_screen.dart';
 import '../screens/orders_screen.dart';
 import '../screens/clients_screen.dart';
@@ -52,6 +53,11 @@ class _AppShellState extends State<AppShell> {
       NotificationCenterService.pendingOpenNotifications = false;
       _current = Section.notifications;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        PermissionOnboardingSheet.showIfNeeded(context);
+      }
+    });
   }
 
   @override
